@@ -6,13 +6,6 @@ export const createVoucher = async (req, res) => {
   try {
     const voucherData = req.body;
     
-    // Validate required fields
-    if (!voucherData.customerName || !voucherData.customerPhone || !voucherData.bilties) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields'
-      });
-    }
 
     // Validate bilties exist
     if (!Array.isArray(voucherData.bilties) || voucherData.bilties.length === 0) {
@@ -58,8 +51,11 @@ export const createVoucher = async (req, res) => {
     const voucher = new Voucher(voucherData);
     await voucher.save();
 
-    // Populate the voucher with shipment details
-    await voucher.populate('bilties.biltyId');
+    // Populate the voucher with all shipment details needed by the frontend
+    await voucher.populate({
+      path: 'bilties.biltyId',
+      select: 'biltyNumber senderName addaName cityName receiverName dateTime items totalFare totalCharges receivedFare remainingFare',
+    });
 
     res.status(201).json({
       success: true,
@@ -105,7 +101,7 @@ export const getVouchers = async (req, res) => {
     }
 
     const vouchers = await Voucher.find(filter)
-      .populate('bilties.biltyId', 'biltyNumber senderName receiverName')
+      .populate('bilties.biltyId', 'biltyNumber senderName addaName cityName receiverName dateTime items totalFare totalCharges receivedFare remainingFare')
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });
 

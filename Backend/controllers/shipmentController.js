@@ -4,6 +4,7 @@ import Shipment from '../models/shipmentModel.js';
 export const createShipment = async (req, res) => {
   try {
     const shipmentData = req.body;
+    console.log(shipmentData);
     
     // Validate required fields
     if (!shipmentData.biltyNumber || !shipmentData.senderName || !shipmentData.receiverName) {

@@ -23,6 +23,7 @@ interface BiltyForVoucher {
   totalFare: number;
   remainingFare: number;
   receivedFare: number;
+  totalCharges: number;
   selected?: boolean;
 }
 
@@ -79,9 +80,7 @@ export default function Vouchers() {
   // Form states
   const [selectedBilties, setSelectedBilties] = useState<SelectedBilty[]>([]);
   const [formData, setFormData] = useState({
-    customerName: "",
-    customerPhone: "",
-    customerEmail: "",
+
     taxPercentage: 0,
     paymentMethod: "cash",
     paymentStatus: "unpaid",
@@ -129,7 +128,8 @@ export default function Vouchers() {
           receiverName: shipment.receiverName,
           totalFare: shipment.totalFare || 0,
           remainingFare: shipment.remainingFare || 0, // Unpaid amount
-          receivedFare: shipment.receivedFare || 0
+          receivedFare: shipment.receivedFare || 0,
+          totalCharges: shipment.totalCharges || 0
         };
       });
       console.log('Processed bilties:', bilties); // Debug log
@@ -240,9 +240,7 @@ export default function Vouchers() {
     
     // Reset form
       setFormData({
-      customerName: "",
-      customerPhone: "",
-      customerEmail: "",
+
         taxPercentage: 0,
         paymentMethod: "cash",
         paymentStatus: "unpaid",
@@ -297,8 +295,14 @@ export default function Vouchers() {
         type: 'voucher' as const,
         bilties: voucher.bilties.map(bilty => ({
           biltyNumber: bilty.biltyNumber,
-          amount: bilty.amount,
-          biltyId: bilty.biltyId
+          date: bilty.biltyId?.dateTime ? new Date(bilty.biltyId.dateTime).toLocaleDateString() : '-',
+          addaName: bilty.biltyId?.addaName || '-',
+          senderName: bilty.biltyId?.senderName || '-',
+          receiverName: bilty.biltyId?.receiverName || '-',
+          quantity: bilty.biltyId?.items ? bilty.biltyId.items.reduce((sum, item) => sum + (item.quantity || 0), 0) : '-',
+          totalCharges: bilty.biltyId?.totalCharges ?? '-',
+          receivedFare: bilty.biltyId?.receivedFare ?? '-',
+          remainingFare: bilty.biltyId?.remainingFare ?? '-',
         })),
         
         // Additional details
@@ -378,51 +382,6 @@ export default function Vouchers() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Customer Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">
-                  {language === 'ur' ? 'کسٹمر کی معلومات' : 'Customer Information'}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="customerName">
-                      {language === 'ur' ? 'کسٹمر کا نام' : 'Customer Name'}
-                    </Label>
-                    <Input
-                      id="customerName"
-                      value={formData.customerName}
-                      onChange={(e) => setFormData({...formData, customerName: e.target.value})}
-                      placeholder={language === 'ur' ? 'کسٹمر کا نام درج کریں' : 'Enter customer name'}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="customerPhone">
-                      {language === 'ur' ? 'فون نمبر' : 'Phone Number'}
-                    </Label>
-                    <Input
-                      id="customerPhone"
-                      value={formData.customerPhone}
-                      onChange={(e) => setFormData({...formData, customerPhone: e.target.value})}
-                      placeholder={language === 'ur' ? 'فون نمبر درج کریں' : 'Enter phone number'}
-                      required
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label htmlFor="customerEmail">
-                      {language === 'ur' ? 'ای میل (اختیاری)' : 'Email (Optional)'}
-                    </Label>
-                    <Input
-                      id="customerEmail"
-                      type="email"
-                      value={formData.customerEmail}
-                      onChange={(e) => setFormData({...formData, customerEmail: e.target.value})}
-                      placeholder={language === 'ur' ? 'ای میل درج کریں' : 'Enter email address'}
-                    />
-                  </div>
-                </div>
-              </div>
-
               {/* Bilty Selection */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -439,118 +398,60 @@ export default function Vouchers() {
                     🔧 {language === 'ur' ? 'رقم ٹھیک کریں' : 'Fix Amounts'}
                   </Button>
                 </div>
-                
-                {/* Bilty Dropdown */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <Label>{language === 'ur' ? 'دستیاب بلٹیز' : 'Available Bilties'}</Label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="showOnlyUnpaid"
-                        checked={showOnlyUnpaid}
-                        onChange={(e) => setShowOnlyUnpaid(e.target.checked)}
-                        className="w-4 h-4 text-blue-600 rounded"
-                      />
-                      <label htmlFor="showOnlyUnpaid" className="text-sm text-gray-600">
-                        {language === 'ur' ? 'صرف غیر ادا شدہ' : 'Only Unpaid'}
-                      </label>
-                    </div>
+                <div className="flex justify-between items-center mb-2">
+                  <Label>{language === 'ur' ? 'دستیاب بلٹیز' : 'Available Bilties'}</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="showOnlyUnpaid"
+                      checked={showOnlyUnpaid}
+                      onChange={(e) => setShowOnlyUnpaid(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded"
+                    />
+                    <label htmlFor="showOnlyUnpaid" className="text-sm text-gray-600">
+                      {language === 'ur' ? 'صرف غیر ادا شدہ' : 'Only Unpaid'}
+                    </label>
                   </div>
-                  <Select onValueChange={(biltyId) => {
-                    const bilty = availableBilties.find(b => b.id === biltyId);
-                    if (bilty) addBiltyToVoucher(bilty);
-                  }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={language === 'ur' ? 'بلٹی منتخب کریں' : 'Select a bilty'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableBilties.filter(bilty => showOnlyUnpaid ? bilty.remainingFare > 0 : true).length === 0 ? (
-                        <div className="p-2 text-center text-gray-500">
-                          {language === 'ur' ? 'کوئی بلٹی دستیاب نہیں' : showOnlyUnpaid ? 'No bilties with unpaid amounts' : 'No bilties available'}
-                        </div>
-                      ) : (
-                        availableBilties.filter(bilty => showOnlyUnpaid ? bilty.remainingFare > 0 : true).map((bilty) => (
-                          <SelectItem 
-                            key={bilty.id} 
-                            value={bilty.id}
-                            disabled={selectedBilties.some(b => b.biltyId === bilty.id)}
-                          >
-                                                      <div className="flex justify-between items-center w-full">
-                            <div className="flex flex-col">
-                              <span className="font-medium">{bilty.biltyNumber} - {bilty.senderName} → {bilty.receiverName}</span>
-                              <span className="text-xs text-gray-500">
-                                Total: PKR {bilty.totalFare.toLocaleString()} | Paid: PKR {bilty.receivedFare.toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className={`font-bold ${bilty.remainingFare > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                Unpaid: PKR {bilty.remainingFare.toLocaleString()}
-                              </span>
-                              {bilty.remainingFare === 0 && <span className="text-xs text-green-500">(Fully Paid)</span>}
-                              {bilty.remainingFare < 0 && <span className="text-xs text-blue-500">(Overpaid)</span>}
-                            </div>
-                          </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  
-                  {/* Info about bilty payment status */}
-                  {availableBilties.length > 0 && (
-                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="text-green-600">
-                          ✅ {availableBilties.filter(b => b.remainingFare === 0).length} {language === 'ur' ? 'مکمل ادا شدہ' : 'Fully Paid'}
-                        </div>
-                        <div className="text-red-600">
-                          💰 {availableBilties.filter(b => b.remainingFare > 0).length} {language === 'ur' ? 'باقی ادائیگی' : 'Have Unpaid'}
-                        </div>
-                        <div className="text-gray-600">
-                          📊 {availableBilties.filter(b => b.totalFare === 0).length} {language === 'ur' ? 'بغیر رقم' : 'No Amount'}
-                        </div>
-                      </div>
-                      <div className="mt-1 text-xs text-blue-600">
-                        💡 {language === 'ur' ? 'صرف غیر ادا شدہ رقم واؤچر میں شامل ہوگی' : 'Only unpaid amounts will be added to voucher'}
-                      </div>
+                </div>
+                {/* Bilty Checkboxes */}
+                <div className="space-y-2 max-h-64 overflow-y-auto border rounded p-2 bg-gray-50">
+                  {availableBilties.filter(bilty => showOnlyUnpaid ? bilty.remainingFare > 0 : true).length === 0 ? (
+                    <div className="p-2 text-center text-gray-500">
+                      {language === 'ur' ? 'کوئی بلٹی دستیاب نہیں' : showOnlyUnpaid ? 'No bilties with unpaid amounts' : 'No bilties available'}
                     </div>
+                  ) : (
+                    availableBilties.filter(bilty => showOnlyUnpaid ? bilty.remainingFare > 0 : true).map((bilty) => (
+                      <div key={bilty.id} className="flex items-center gap-2 border-b last:border-b-0 py-1">
+                        <input
+                          type="checkbox"
+                          id={`bilty-${bilty.id}`}
+                          checked={selectedBilties.some(b => b.biltyId === bilty.id)}
+                          onChange={e => {
+                            if (e.target.checked) addBiltyToVoucher(bilty);
+                            else removeBiltyFromVoucher(bilty.id);
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded"
+                        />
+                        <label htmlFor={`bilty-${bilty.id}`} className="flex-1 cursor-pointer">
+                          <div className="flex flex-col">
+                            <span className="font-medium">{bilty.biltyNumber} - {bilty.senderName} → {bilty.receiverName}</span>
+                            <span className="text-xs text-gray-500">
+                              Total: PKR {bilty.totalCharges.toLocaleString()} | Paid: PKR {bilty.receivedFare.toLocaleString()} | 
+                              <span className="font-bold text-red-600">{language === 'ur' ? 'باقی:' : 'Remaining:'} PKR {bilty.remainingFare.toLocaleString()}</span>
+                            </span>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className={`font-bold ${bilty.remainingFare > 0 ? 'text-red-600' : 'text-green-600'}`}>Unpaid: PKR {bilty.remainingFare.toLocaleString()}</span>
+                            {bilty.remainingFare === 0 && <span className="text-xs text-green-500">(Fully Paid)</span>}
+                            {bilty.remainingFare < 0 && <span className="text-xs text-blue-500">(Overpaid)</span>}
+                          </div>
+                        </label>
+                      </div>
+                    ))
                   )}
                 </div>
-
-                {/* Selected Bilties */}
-                {selectedBilties.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>{language === 'ur' ? 'منتخب شدہ بلٹیز' : 'Selected Bilties'}</Label>
-                                        <div className="border rounded-lg p-4 space-y-2 max-h-48 overflow-y-auto">
-                      {selectedBilties.map((bilty) => (
-                        <div key={bilty.biltyId} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                          <div className="flex flex-col">
-                            <span className="font-medium">{bilty.biltyNumber}</span>
-                            <span className="text-xs text-gray-500">
-                              {language === 'ur' ? 'غیر ادا شدہ رقم' : 'Unpaid Amount'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`font-semibold ${bilty.amount > 0 ? 'text-red-600' : 'text-green-500'}`}>
-                              PKR {bilty.amount.toLocaleString()}
-                              {bilty.amount === 0 && <span className="text-xs text-green-400 ml-1">(Fully Paid)</span>}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeBiltyFromVoucher(bilty.biltyId)}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-      </div>
+              </div>
+              {/* Tax, Payment, and Notes Section (unchanged) */}
 
               {/* Tax and Payment */}
               <div className="space-y-4">
@@ -871,18 +772,6 @@ export default function Vouchers() {
               </div>
             </div>
 
-              {/* Customer Info */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg">{language === 'ur' ? 'کسٹمر کی معلومات' : 'Customer Information'}</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><strong>{language === 'ur' ? 'نام:' : 'Name:'}</strong> {selectedVoucher.customerName}</div>
-                  <div><strong>{language === 'ur' ? 'فون:' : 'Phone:'}</strong> {selectedVoucher.customerPhone}</div>
-                  {selectedVoucher.customerEmail && (
-                    <div className="col-span-2"><strong>{language === 'ur' ? 'ای میل:' : 'Email:'}</strong> {selectedVoucher.customerEmail}</div>
-                  )}
-            </div>
-          </div>
-
               {/* Bilties */}
               <div>
                 <h4 className="font-semibold text-lg mb-3">{language === 'ur' ? 'شامل بلٹیز' : 'Included Bilties'}</h4>
@@ -890,18 +779,28 @@ export default function Vouchers() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>{language === 'ur' ? 'بلٹی نمبر' : 'Bilty Number'}</TableHead>
+                      <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
+                      <TableHead>{language === 'ur' ? 'ادا کا نام' : 'Adda Name'}</TableHead>
                       <TableHead>{language === 'ur' ? 'بھیجنے والا' : 'Sender'}</TableHead>
                       <TableHead>{language === 'ur' ? 'وصول کنندہ' : 'Receiver'}</TableHead>
-                      <TableHead>{language === 'ur' ? 'رقم' : 'Amount'}</TableHead>
+                      <TableHead>{language === 'ur' ? 'مقدار' : 'Quantity'}</TableHead>
+                      <TableHead>{language === 'ur' ? 'کل چارجز' : 'Total Charges'}</TableHead>
+                      <TableHead>{language === 'ur' ? 'وصول شدہ' : 'Received'}</TableHead>
+                      <TableHead>{language === 'ur' ? 'باقی' : 'Remaining'}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {selectedVoucher.bilties.map((bilty, index) => (
                       <TableRow key={index}>
                         <TableCell>{bilty.biltyNumber}</TableCell>
-                        <TableCell>{bilty.biltyId.senderName}</TableCell>
-                        <TableCell>{bilty.biltyId.receiverName}</TableCell>
-                        <TableCell>PKR {bilty.amount.toLocaleString()}</TableCell>
+                        <TableCell>{bilty.biltyId?.dateTime ? new Date(bilty.biltyId.dateTime).toLocaleDateString() : '-'}</TableCell>
+                        <TableCell>{bilty.biltyId?.addaName || '-'}</TableCell>
+                        <TableCell>{bilty.biltyId?.senderName || '-'}</TableCell>
+                        <TableCell>{bilty.biltyId?.receiverName || '-'}</TableCell>
+                        <TableCell>{bilty.biltyId?.items ? bilty.biltyId.items.reduce((sum, item) => sum + (item.quantity || 0), 0) : '-'}</TableCell>
+                        <TableCell>PKR {bilty.biltyId?.totalCharges?.toLocaleString() ?? '-'}</TableCell>
+                        <TableCell>PKR {bilty.biltyId?.receivedFare?.toLocaleString() ?? '-'}</TableCell>
+                        <TableCell>PKR {bilty.biltyId?.remainingFare?.toLocaleString() ?? '-'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

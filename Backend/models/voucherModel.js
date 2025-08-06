@@ -22,17 +22,7 @@ const voucherSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  customerName: {
-    type: String,
-    required: true,
-  },
-  customerPhone: {
-    type: String,
-    required: true,
-  },
-  customerEmail: {
-    type: String,
-  },
+
   bilties: [voucherBiltySchema],
   subtotal: {
     type: Number,

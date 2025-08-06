@@ -46,6 +46,7 @@ interface BiltyData {
   vehicleNumber?: string;
   driverName?: string;
   pickupType: 'self' | 'delivery';
+  totalCharges?: number; // Added for detailed breakdown
 }
 
 export default function Shipments() {
@@ -74,6 +75,7 @@ export default function Shipments() {
     phoneNumber: "",
     items: [],
     totalFare: 0,
+    totalCharges: 0,
     mazdoori: 0,
     biltyCharges: 0,
     reriCharges: 0,
@@ -96,6 +98,30 @@ export default function Shipments() {
   useEffect(() => {
     loadShipments();
   }, [searchTerm, filterStatus, filterPayment]);
+
+  // Recalculate totals when items or form data changes
+  useEffect(() => {
+    const totalFare = calculateTotalFare();
+    const totalCharges = totalFare + (formData.mazdoori || 0) + (formData.biltyCharges || 0) + (formData.reriCharges || 0) + (formData.extraCharges || 0);
+    const remainingFare = totalCharges - (formData.receivedFare || 0);
+    
+    console.log('useEffect: Recalculating totals - Total fare:', totalFare, 'Total charges:', totalCharges, 'Remaining fare:', remainingFare);
+    
+    setFormData(prev => ({
+      ...prev,
+      totalFare: totalFare,
+      totalCharges: totalCharges,
+      remainingFare: remainingFare
+    }));
+  }, [items, formData.mazdoori, formData.biltyCharges, formData.reriCharges, formData.extraCharges, formData.receivedFare]);
+
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (isFormOpen) {
+      resetForm();
+      console.log('Form dialog opened, form reset');
+    }
+  }, [isFormOpen]);
 
   const loadShipments = async () => {
     try {
@@ -132,17 +158,38 @@ export default function Shipments() {
         unitFare: newItem.unitFare,
         totalFare: newItem.quantity * newItem.unitFare
       };
-      setItems([...items, item]);
+      
+      const updatedItems = [...items, item];
+      setItems(updatedItems);
+      
+      // Update formData.items to keep them in sync
+      setFormData(prev => ({
+        ...prev,
+        items: updatedItems
+      }));
+      
+      console.log('Item added:', item);
+      console.log('Updated items array:', updatedItems);
+      
       setNewItem({ description: "", quantity: 1, unitFare: 0 });
     }
   };
 
   const removeItem = (itemId: string) => {
-    setItems(items.filter(item => item.id !== itemId));
+    const updatedItems = items.filter(item => item.id !== itemId);
+    setItems(updatedItems);
+    
+    // Update formData.items to keep them in sync
+    setFormData(prev => ({
+      ...prev,
+      items: updatedItems
+    }));
+    
+    console.log('Item removed. Updated items:', updatedItems);
   };
 
   const updateItem = (itemId: string, field: keyof BiltyItem, value: any) => {
-    setItems(items.map(item => {
+    const updatedItems = items.map(item => {
       if (item.id === itemId) {
         const updatedItem = { ...item, [field]: value };
         if (field === 'quantity' || field === 'unitFare') {
@@ -151,18 +198,60 @@ export default function Shipments() {
         return updatedItem;
       }
       return item;
+    });
+    
+    setItems(updatedItems);
+    
+    // Update formData.items to keep them in sync
+    setFormData(prev => ({
+      ...prev,
+      items: updatedItems
     }));
+    
+    console.log('Item updated. Updated items:', updatedItems);
   };
 
   // Calculate totals
   const calculateTotalFare = () => {
-    return items.reduce((sum, item) => sum + item.totalFare, 0);
+    const total = items.reduce((sum, item) => sum + item.totalFare, 0);
+    console.log('Calculated total fare:', total);
+    return total;
   };
 
   const calculateRemainingFare = () => {
     const totalFare = calculateTotalFare();
     const totalCharges = totalFare + (formData.mazdoori || 0) + (formData.biltyCharges || 0) + (formData.reriCharges || 0) + (formData.extraCharges || 0);
-    return totalCharges - (formData.receivedFare || 0);
+    const remaining = totalCharges - (formData.receivedFare || 0);
+    console.log('Calculated remaining fare:', remaining);
+    return remaining;
+  };
+
+  const resetForm = () => {
+    setFormData({
+      biltyNumber: "",
+      senderName: "",
+      addaName: "",
+      cityName: "",
+      receiverName: "",
+      receiverPhone: "",
+      receiverAddress: "",
+      paymentStatus: "unpaid",
+      phoneNumber: "",
+      items: [],
+      totalFare: 0,
+      totalCharges: 0,
+      mazdoori: 0,
+      biltyCharges: 0,
+      reriCharges: 0,
+      extraCharges: 0,
+      receivedFare: 0,
+      remainingFare: 0,
+      deliveryStatus: "pending",
+      pickupType: "delivery"
+    });
+    setItems([]);
+    setNewItem({ description: "", quantity: 1, unitFare: 0 });
+    console.log('Form reset completed');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -170,42 +259,43 @@ export default function Shipments() {
     try {
       setLoading(true);
       const totalFare = calculateTotalFare();
-      const remainingFare = calculateRemainingFare();
+      const totalCharges = totalFare + (formData.mazdoori || 0) + (formData.biltyCharges || 0) + (formData.reriCharges || 0) + (formData.extraCharges || 0);
+      const remainingFare = totalCharges - (formData.receivedFare || 0);
       
       const shipmentData = {
         biltyNumber: formData.biltyNumber || generateBiltyNumber(),
-        items: items,
+        items: items, // Use the items state directly
         totalFare: totalFare,
+        totalCharges: totalCharges,
         remainingFare: remainingFare,
-        ...formData,
+        senderName: formData.senderName,
+        addaName: formData.addaName,
+        cityName: formData.cityName,
+        receiverName: formData.receiverName,
+        receiverPhone: formData.receiverPhone,
+        receiverAddress: formData.receiverAddress,
+        paymentStatus: formData.paymentStatus,
+        phoneNumber: formData.phoneNumber,
+        mazdoori: formData.mazdoori || 0,
+        biltyCharges: formData.biltyCharges || 0,
+        reriCharges: formData.reriCharges || 0,
+        extraCharges: formData.extraCharges || 0,
+        receivedFare: formData.receivedFare || 0,
+        deliveryStatus: formData.deliveryStatus,
+        pickupType: formData.pickupType,
         dateTime: new Date().toISOString().slice(0, 16).replace('T', ' ')
       };
+
+      console.log('Submitting shipment data:', shipmentData);
+      console.log('Items being sent:', items);
+      console.log('Total fare:', totalFare);
+      console.log('Total charges:', totalCharges);
+      console.log('Remaining fare:', remainingFare);
 
       await shipmentService.createShipment(shipmentData);
       
       // Reset form
-      setFormData({
-        biltyNumber: "",
-        senderName: "",
-        addaName: "",
-        cityName: "",
-        receiverName: "",
-        receiverPhone: "",
-        receiverAddress: "",
-        paymentStatus: "unpaid",
-        phoneNumber: "",
-        items: [],
-        totalFare: 0,
-        mazdoori: 0,
-        biltyCharges: 0,
-        reriCharges: 0,
-        extraCharges: 0,
-        receivedFare: 0,
-        remainingFare: 0,
-        deliveryStatus: "pending",
-        pickupType: "delivery"
-      });
-      setItems([]);
+      resetForm();
       setIsFormOpen(false);
       
       // Reload shipments
@@ -655,8 +745,77 @@ export default function Shipments() {
                 </div>
               </div>
 
+              {/* Total Fare and Remaining Fare Display */}
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-semibold mb-4">
+                  {language === 'ur' ? 'کل حساب' : 'Total Calculation'}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="text-center">
+                    <Label className="text-sm font-medium text-gray-600">
+                      {language === 'ur' ? 'کل ریٹ' : 'Total Fare'}
+                    </Label>
+                    <div className="text-2xl font-bold text-green-600">
+                      PKR {calculateTotalFare()}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <Label className="text-sm font-medium text-gray-600">
+                      {language === 'ur' ? 'باقی رقم' : 'Remaining Fare'}
+                    </Label>
+                    <div className="text-2xl font-bold text-red-600">
+                      PKR {calculateRemainingFare()}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Detailed Breakdown */}
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-semibold mb-2">
+                    {language === 'ur' ? 'تفصیلی حساب' : 'Detailed Breakdown'}
+                  </h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>{language === 'ur' ? 'اشیاء کا کل ریٹ:' : 'Items Total Fare:'}</span>
+                      <span>PKR {calculateTotalFare()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{language === 'ur' ? 'مزدوری:' : 'Mazdoori:'}</span>
+                      <span>PKR {formData.mazdoori || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{language === 'ur' ? 'بلٹی چارجز:' : 'Bilty Charges:'}</span>
+                      <span>PKR {formData.biltyCharges || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{language === 'ur' ? 'ریری چارجز:' : 'Reri Charges:'}</span>
+                      <span>PKR {formData.reriCharges || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{language === 'ur' ? 'اضافی چارجز:' : 'Extra Charges:'}</span>
+                      <span>PKR {formData.extraCharges || 0}</span>
+                    </div>
+                    <div className="flex justify-between font-bold border-t pt-1">
+                      <span>{language === 'ur' ? 'کل چارجز:' : 'Total Charges:'}</span>
+                      <span>PKR {formData.totalCharges || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{language === 'ur' ? 'وصول شدہ:' : 'Received:'}</span>
+                      <span>PKR {formData.receivedFare || 0}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-red-600 border-t pt-1">
+                      <span>{language === 'ur' ? 'باقی:' : 'Remaining:'}</span>
+                      <span>PKR {calculateRemainingFare()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex justify-end space-x-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => {
+                  resetForm();
+                  setIsFormOpen(false);
+                }}>
                   {language === 'ur' ? 'منسوخ' : 'Cancel'}
                 </Button>
                 <Button type="submit" disabled={loading}>
@@ -893,13 +1052,18 @@ export default function Shipments() {
                 </Table>
               </div>
 
-              {/* Financial Details */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                <div><strong>{language === 'ur' ? 'کل ریٹ:' : 'Total Fare:'}</strong> PKR {selectedBilty.totalFare}</div>
-                <div><strong>{language === 'ur' ? 'مزدوری:' : 'Mazdoori:'}</strong> PKR {selectedBilty.mazdoori}</div>
-                <div><strong>{language === 'ur' ? 'بلٹی چارجز:' : 'Bilty Charges:'}</strong> PKR {selectedBilty.biltyCharges}</div>
-                <div><strong>{language === 'ur' ? 'وصول شدہ:' : 'Received:'}</strong> PKR {selectedBilty.receivedFare}</div>
-                <div><strong>{language === 'ur' ? 'باقی:' : 'Remaining:'}</strong> PKR {selectedBilty.remainingFare}</div>
+              {/* Financial Details - Enhanced */}
+              <div className="p-4 bg-gray-50 rounded-lg space-y-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div><strong>{language === 'ur' ? 'کل ریٹ:' : 'Total Fare:'}</strong> <span className="text-green-700 font-bold">PKR {selectedBilty.totalFare}</span></div>
+                  <div><strong>{language === 'ur' ? 'کل چارجز:' : 'Total Charges:'}</strong> <span className="text-blue-700 font-bold">PKR {selectedBilty.totalCharges ?? (selectedBilty.totalFare + selectedBilty.mazdoori + selectedBilty.biltyCharges + (selectedBilty.reriCharges || 0) + (selectedBilty.extraCharges || 0))}</span></div>
+                  <div><strong>{language === 'ur' ? 'مزدوری:' : 'Mazdoori:'}</strong> PKR {selectedBilty.mazdoori}</div>
+                  <div><strong>{language === 'ur' ? 'بلٹی چارجز:' : 'Bilty Charges:'}</strong> PKR {selectedBilty.biltyCharges}</div>
+                  <div><strong>{language === 'ur' ? 'ریری چارجز:' : 'Reri Charges:'}</strong> PKR {selectedBilty.reriCharges || 0}</div>
+                  <div><strong>{language === 'ur' ? 'اضافی چارجز:' : 'Extra Charges:'}</strong> PKR {selectedBilty.extraCharges || 0}</div>
+                  <div><strong>{language === 'ur' ? 'وصول شدہ:' : 'Received:'}</strong> <span className="text-green-600 font-bold">PKR {selectedBilty.receivedFare || 0}</span></div>
+                  <div><strong>{language === 'ur' ? 'باقی:' : 'Remaining:'}</strong> <span className="text-red-600 font-bold">PKR {selectedBilty.remainingFare}</span></div>
+                </div>
                 <div>
                   <strong>{language === 'ur' ? 'ادائیگی:' : 'Payment:'}</strong>
                   <Badge className={`ml-2 ${getPaymentColor(selectedBilty.paymentStatus)}`}>
