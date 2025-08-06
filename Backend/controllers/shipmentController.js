@@ -1,8 +1,10 @@
 import Shipment from '../models/shipmentModel.js';
+import Customer from '../models/customerModel.js';
 
 // Create new shipment
 export const createShipment = async (req, res) => {
   try {
+    //
     const shipmentData = req.body;
     console.log(shipmentData);
     
@@ -28,6 +30,31 @@ export const createShipment = async (req, res) => {
 
     const shipment = new Shipment(shipmentData);
     await shipment.save();
+
+    // --- Auto-create Customer from receiver info ---
+    const customerExists = await Customer.findOne({ biltyNumber: shipment.biltyNumber });
+    if (!customerExists) {
+      const customerData = {
+        name: shipment.receiverName,
+        biltyNumber: shipment.biltyNumber,
+        date: shipment.dateTime ? new Date(shipment.dateTime) : new Date(),
+        quantity: shipment.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 1,
+        paymentStatus: shipment.paymentStatus === 'paid' ? 'cash' : 'cod', // Map as best as possible
+        deliveryType: shipment.pickupType === 'self' ? 'self_pickup' : 'delivery_by_distributor',
+        phone: shipment.receiverPhone,
+        address: shipment.receiverAddress,
+        totalAmount: shipment.totalFare || 0,
+        paidAmount: shipment.receivedFare || 0,
+        notes: shipment.notes || '',
+        createdBy: req.user._id
+      };
+      try {
+        await Customer.create(customerData);
+      } catch (err) {
+        console.error('Error auto-creating customer:', err.message);
+      }
+    }
+    // --- End auto-create customer ---
 
     res.status(201).json({
       success: true,

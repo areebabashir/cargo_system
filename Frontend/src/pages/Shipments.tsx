@@ -315,33 +315,33 @@ export default function Shipments() {
   const handleDownloadReceipt = async (bilty: BiltyData) => {
     try {
       setDownloadingReceipt(bilty.id);
-      const receiptData = {
-        documentNumber: bilty.biltyNumber,
+    const receiptData = {
+      documentNumber: bilty.biltyNumber,
         date: new Date(bilty.dateTime).toLocaleDateString(),
-        senderName: bilty.senderName,
-        senderPhone: bilty.phoneNumber,
-        senderAddress: `${bilty.addaName}, ${bilty.cityName}`,
-        receiverName: bilty.receiverName,
-        receiverPhone: bilty.receiverPhone,
-        receiverAddress: bilty.receiverAddress,
-        quantity: bilty.items.reduce((sum, item) => sum + item.quantity, 0),
+      senderName: bilty.senderName,
+      senderPhone: bilty.phoneNumber,
+      senderAddress: `${bilty.addaName}, ${bilty.cityName}`,
+      receiverName: bilty.receiverName,
+      receiverPhone: bilty.receiverPhone,
+      receiverAddress: bilty.receiverAddress,
+      quantity: bilty.items.reduce((sum, item) => sum + item.quantity, 0),
         weight: 0, // Not used in current structure
-        details: bilty.items.map(item => `${item.description} (${item.quantity}x${item.unitFare})`).join(', '),
-        fare: bilty.totalFare,
+      details: bilty.items.map(item => `${item.description} (${item.quantity}x${item.unitFare})`).join(', '),
+      fare: bilty.totalFare,
         localCharges: 0, // Not used in current structure
-        mazdoori: bilty.mazdoori,
-        biltyCharges: bilty.biltyCharges,
+      mazdoori: bilty.mazdoori,
+      biltyCharges: bilty.biltyCharges,
         totalAmount: bilty.totalFare + bilty.mazdoori + bilty.biltyCharges + (bilty.reriCharges || 0) + (bilty.extraCharges || 0),
-        paymentStatus: bilty.paymentStatus,
-        deliveryStatus: bilty.deliveryStatus,
-        vehicleNumber: bilty.vehicleNumber || "N/A",
-        driverName: bilty.driverName || "N/A",
-        pickupType: bilty.pickupType,
-        addaName: bilty.addaName,
-        cityName: bilty.cityName,
-        biltyNumber: bilty.biltyNumber,
-        type: 'bilty' as const,
-        items: bilty.items,
+      paymentStatus: bilty.paymentStatus,
+      deliveryStatus: bilty.deliveryStatus,
+      vehicleNumber: bilty.vehicleNumber || "N/A",
+      driverName: bilty.driverName || "N/A",
+      pickupType: bilty.pickupType,
+      addaName: bilty.addaName,
+      cityName: bilty.cityName,
+      biltyNumber: bilty.biltyNumber,
+      type: 'bilty' as const,
+      items: bilty.items,
         reriCharges: bilty.reriCharges || 0,
         extraCharges: bilty.extraCharges || 0,
         receivedFare: bilty.receivedFare || 0,
@@ -555,43 +555,43 @@ export default function Shipments() {
                 
                 {/* Add Item Form */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
-                  <div>
+                    <div>
                     <Label>
                       {language === 'ur' ? 'تفصیل' : 'Description'}
-                    </Label>
-                    <Input
-                      value={newItem.description}
-                      onChange={(e) => setNewItem({...newItem, description: e.target.value})}
+                      </Label>
+                      <Input
+                        value={newItem.description}
+                        onChange={(e) => setNewItem({...newItem, description: e.target.value})}
                       placeholder={language === 'ur' ? 'اشیاء کی تفصیل' : 'Item description'}
-                    />
-                  </div>
-                  <div>
+                      />
+                    </div>
+                    <div>
                     <Label>
-                      {language === 'ur' ? 'مقدار' : 'Quantity'}
-                    </Label>
-                    <Input
-                      type="number"
-                      value={newItem.quantity}
+                        {language === 'ur' ? 'مقدار' : 'Quantity'}
+                      </Label>
+                      <Input
+                        type="number"
+                        value={newItem.quantity}
                       onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})}
                       placeholder="1"
-                    />
-                  </div>
-                  <div>
+                      />
+                    </div>
+                    <div>
                     <Label>
                       {language === 'ur' ? 'فی یونٹ ریٹ' : 'Unit Rate'}
-                    </Label>
-                    <Input
-                      type="number"
-                      value={newItem.unitFare}
-                      onChange={(e) => setNewItem({...newItem, unitFare: parseFloat(e.target.value) || 0})}
+                      </Label>
+                      <Input
+                        type="number"
+                        value={newItem.unitFare}
+                        onChange={(e) => setNewItem({...newItem, unitFare: parseFloat(e.target.value) || 0})}
                       placeholder="0"
-                    />
-                  </div>
-                  <div className="flex items-end">
+                      />
+                    </div>
+                    <div className="flex items-end">
                     <Button type="button" onClick={addItem} className="w-full">
-                      <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="w-4 h-4 mr-2" />
                       {language === 'ur' ? 'شامل کریں' : 'Add Item'}
-                    </Button>
+                      </Button>
                   </div>
                 </div>
 
@@ -605,14 +605,14 @@ export default function Shipments() {
                         <div className="text-center">PKR {item.unitFare}</div>
                         <div className="text-center font-semibold">PKR {item.totalFare}</div>
                         <div className="text-center">
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => removeItem(item.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => removeItem(item.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                         </div>
                       </div>
                     ))}
@@ -852,11 +852,11 @@ export default function Shipments() {
               <Label htmlFor="statusFilter">
                 {language === 'ur' ? 'ڈیلیوری کی صورتحال' : 'Delivery Status'}
               </Label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger>
                   <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
+              </SelectTrigger>
+              <SelectContent>
                   <SelectItem value="all">
                     {language === 'ur' ? 'تمام' : 'All'}
                   </SelectItem>
@@ -869,18 +869,18 @@ export default function Shipments() {
                   <SelectItem value="returned">
                     {language === 'ur' ? 'واپس' : 'Returned'}
                   </SelectItem>
-                </SelectContent>
-              </Select>
+              </SelectContent>
+            </Select>
             </div>
             <div>
               <Label htmlFor="paymentFilter">
                 {language === 'ur' ? 'ادائیگی کی صورتحال' : 'Payment Status'}
               </Label>
-              <Select value={filterPayment} onValueChange={setFilterPayment}>
-                <SelectTrigger>
+            <Select value={filterPayment} onValueChange={setFilterPayment}>
+              <SelectTrigger>
                   <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
+              </SelectTrigger>
+              <SelectContent>
                   <SelectItem value="all">
                     {language === 'ur' ? 'تمام' : 'All'}
                   </SelectItem>
@@ -890,14 +890,14 @@ export default function Shipments() {
                   <SelectItem value="unpaid">
                     {language === 'ur' ? 'غیر ادا شدہ' : 'Unpaid'}
                   </SelectItem>
-                </SelectContent>
-              </Select>
+              </SelectContent>
+            </Select>
             </div>
             <div className="flex items-end">
               <Button onClick={loadShipments} className="w-full" disabled={loading}>
-                <Filter className="w-4 h-4 mr-2" />
+              <Filter className="w-4 h-4 mr-2" />
                 {loading ? 'Loading...' : (language === 'ur' ? 'تازہ کریں' : 'Refresh')}
-              </Button>
+            </Button>
             </div>
           </div>
         </CardContent>
@@ -920,54 +920,54 @@ export default function Shipments() {
               {language === 'ur' ? 'کوئی بلٹی نہیں ملی' : 'No bilty found'}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
+          <Table>
+            <TableHeader>
+              <TableRow>
                   <TableHead>{language === 'ur' ? 'بلٹی نمبر' : 'Bilty Number'}</TableHead>
                   <TableHead>{language === 'ur' ? 'بھیجنے والا' : 'Sender'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'وصول کنندہ' : 'Receiver'}</TableHead>
+                <TableHead>{language === 'ur' ? 'وصول کنندہ' : 'Receiver'}</TableHead>
                   <TableHead>{language === 'ur' ? 'شہر' : 'City'}</TableHead>
                   <TableHead>{language === 'ur' ? 'کل رقم' : 'Total Amount'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'ادائیگی' : 'Payment'}</TableHead>
+                <TableHead>{language === 'ur' ? 'ادائیگی' : 'Payment'}</TableHead>
                   <TableHead>{language === 'ur' ? 'ڈیلیوری' : 'Delivery'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'عمل' : 'Actions'}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredBiltyData.map((bilty) => (
-                  <TableRow key={bilty.id}>
-                    <TableCell className="font-medium">{bilty.biltyNumber}</TableCell>
+                <TableHead>{language === 'ur' ? 'عمل' : 'Actions'}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredBiltyData.map((bilty) => (
+                <TableRow key={bilty.id}>
+                  <TableCell className="font-medium">{bilty.biltyNumber}</TableCell>
                     <TableCell>{bilty.senderName}</TableCell>
                     <TableCell>{bilty.receiverName}</TableCell>
                     <TableCell>{bilty.cityName}</TableCell>
                     <TableCell>PKR {bilty.totalFare}</TableCell>
-                    <TableCell>
+                  <TableCell>
                       <Badge className={getPaymentColor(bilty.paymentStatus)}>
                         {bilty.paymentStatus === 'paid' 
                           ? (language === 'ur' ? 'ادا شدہ' : 'Paid')
                           : (language === 'ur' ? 'غیر ادا شدہ' : 'Unpaid')
-                        }
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
+                      }
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
                       <Badge className={getStatusColor(bilty.deliveryStatus)}>
                         {bilty.deliveryStatus === 'delivered' 
                           ? (language === 'ur' ? 'پہنچا دیا گیا' : 'Delivered')
                           : bilty.deliveryStatus === 'pending'
                           ? (language === 'ur' ? 'زیر التواء' : 'Pending')
                           : (language === 'ur' ? 'واپس' : 'Returned')
-                        }
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
+                      }
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
                           variant="outline"
-                          onClick={() => handleViewBilty(bilty)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
+                        onClick={() => handleViewBilty(bilty)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -979,13 +979,13 @@ export default function Shipments() {
                           ) : (
                             <Download className="w-4 h-4" />
                           )}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                          </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
           )}
         </CardContent>
       </Card>
@@ -1004,11 +1004,11 @@ export default function Shipments() {
               <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <strong>{language === 'ur' ? 'بلٹی نمبر:' : 'Bilty Number:'}</strong> {selectedBilty.biltyNumber}
-                </div>
+                    </div>
                 <div>
                   <strong>{language === 'ur' ? 'تاریخ:' : 'Date:'}</strong> {selectedBilty.dateTime}
-                </div>
-              </div>
+                    </div>
+                  </div>
 
               {/* Sender & Receiver Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1019,13 +1019,13 @@ export default function Shipments() {
                   <div><strong>{language === 'ur' ? 'ادا:' : 'Adda:'}</strong> {selectedBilty.addaName}</div>
                   <div><strong>{language === 'ur' ? 'شہر:' : 'City:'}</strong> {selectedBilty.cityName}</div>
                 </div>
-                <div className="space-y-2">
+                  <div className="space-y-2">
                   <h4 className="font-semibold text-lg">{language === 'ur' ? 'وصول کنندہ' : 'Receiver'}</h4>
                   <div><strong>{language === 'ur' ? 'نام:' : 'Name:'}</strong> {selectedBilty.receiverName}</div>
                   <div><strong>{language === 'ur' ? 'فون:' : 'Phone:'}</strong> {selectedBilty.receiverPhone}</div>
                   <div><strong>{language === 'ur' ? 'پتہ:' : 'Address:'}</strong> {selectedBilty.receiverAddress}</div>
-                </div>
-              </div>
+                    </div>
+                    </div>
 
               {/* Items */}
               <div>
@@ -1050,7 +1050,7 @@ export default function Shipments() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+                  </div>
 
               {/* Financial Details - Enhanced */}
               <div className="p-4 bg-gray-50 rounded-lg space-y-2">
@@ -1074,7 +1074,7 @@ export default function Shipments() {
                   </Badge>
                 </div>
               </div>
-
+              
               {/* Download Actions */}
               <div className="flex justify-end pt-4 border-t">
                 <Button
