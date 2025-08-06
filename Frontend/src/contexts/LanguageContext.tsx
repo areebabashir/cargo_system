@@ -19,10 +19,9 @@ const translations = {
     // Navigation
     dashboard: "Dashboard",
     shipments: "Shipments",
-    receipts: "Receipts", 
-    expenses: "Expenses",
     staff: "Staff",
     trips: "Trips",
+    shopManagement: "Shop Management",
     reports: "Reports",
     settings: "Settings",
     
@@ -47,8 +46,6 @@ const translations = {
     
     // Quick Actions
     newShipment: "New Shipment",
-    newReceipt: "New Receipt",
-    addExpense: "Add Expense",
     addStaff: "Add Staff",
     viewReports: "View Reports",
     manageClients: "Manage Clients",
@@ -151,10 +148,9 @@ const translations = {
     // Navigation
     dashboard: "ڈیش بورڈ",
     shipments: "بلٹیاں",
-    receipts: "واؤچرز",
-    expenses: "اخراجات", 
     staff: "سٹاف",
     trips: "ٹرپ",
+    shopManagement: "شاپ مینجمنٹ",
     reports: "رپورٹس",
     settings: "سیٹنگز",
     
@@ -179,8 +175,6 @@ const translations = {
     
     // Quick Actions
     newShipment: "نئی بلٹی بنائیں",
-    newReceipt: "نیا واؤچر بنائیں",
-    addExpense: "اخراجات شامل کریں",
     addStaff: "سٹاف شامل کریں",
     viewReports: "رپورٹس دیکھیں",
     manageClients: "کلائنٹس کا انتظام",

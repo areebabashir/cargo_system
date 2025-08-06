@@ -9,11 +9,10 @@ import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Shipments from "./pages/Shipments";
-import Receipts from "./pages/Receipts";
 import Vouchers from "./pages/Vouchers";
-import Expenses from "./pages/Expenses";
 import Staff from "./pages/Staff";
 import Trips from "./pages/Trips";
+import ShopManagement from "./pages/ShopManagement";
 import Reports from "./pages/Reports";
 import Claims from "./pages/Claims";
 import Settings from "./pages/Settings";
@@ -57,24 +56,10 @@ const App = () => (
                 </DashboardLayout>
               </ProtectedRoute>
             } />
-            <Route path="/receipts" element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <Receipts />
-                </DashboardLayout>
-              </ProtectedRoute>
-            } />
             <Route path="/vouchers" element={
               <ProtectedRoute>
                 <DashboardLayout>
                   <Vouchers />
-                </DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/expenses" element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <Expenses />
                 </DashboardLayout>
               </ProtectedRoute>
             } />
@@ -89,6 +74,13 @@ const App = () => (
               <ProtectedRoute>
                 <DashboardLayout>
                   <Trips />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/shop-management" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <ShopManagement />
                 </DashboardLayout>
               </ProtectedRoute>
             } />
