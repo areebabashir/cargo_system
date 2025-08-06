@@ -274,10 +274,10 @@ export default function Vouchers() {
     try {
     const receiptData = {
       documentNumber: voucher.voucherNumber,
-        voucherNumber: voucher.voucherNumber,
+      voucherNumber: voucher.voucherNumber,
         date: new Date(voucher.createdAt).toLocaleDateString(),
-        customerName: voucher.customerName,
-        customerPhone: voucher.customerPhone,
+      customerName: voucher.customerName,
+      customerPhone: voucher.customerPhone,
         customerEmail: voucher.customerEmail || '',
         
         // Financial details
@@ -290,7 +290,7 @@ export default function Vouchers() {
         remainingAmount: voucher.remainingAmount,
         
         // Payment details
-        paymentMethod: voucher.paymentMethod,
+      paymentMethod: voucher.paymentMethod,
         paymentStatus: voucher.paymentStatus,
         
         // Document type and bilties
@@ -429,7 +429,7 @@ export default function Vouchers() {
                   <h3 className="text-lg font-semibold">
                     {language === 'ur' ? 'بلٹی کا انتخاب' : 'Select Bilties'}
                   </h3>
-                  <Button
+        <Button 
                     type="button"
                     variant="outline"
                     size="sm"
@@ -437,11 +437,11 @@ export default function Vouchers() {
                     className="text-blue-600 border-blue-600 hover:bg-blue-50"
                   >
                     🔧 {language === 'ur' ? 'رقم ٹھیک کریں' : 'Fix Amounts'}
-                  </Button>
-                </div>
-                
+        </Button>
+      </div>
+
                 {/* Bilty Dropdown */}
-                <div>
+              <div>
                   <div className="flex justify-between items-center mb-2">
                     <Label>{language === 'ur' ? 'دستیاب بلٹیز' : 'Available Bilties'}</Label>
                     <div className="flex items-center gap-2">
@@ -455,8 +455,8 @@ export default function Vouchers() {
                       <label htmlFor="showOnlyUnpaid" className="text-sm text-gray-600">
                         {language === 'ur' ? 'صرف غیر ادا شدہ' : 'Only Unpaid'}
                       </label>
-                    </div>
-                  </div>
+              </div>
+            </div>
                   <Select onValueChange={(biltyId) => {
                     const bilty = availableBilties.find(b => b.id === biltyId);
                     if (bilty) addBiltyToVoucher(bilty);
@@ -558,7 +558,7 @@ export default function Vouchers() {
                   {language === 'ur' ? 'ٹیکس اور ادائیگی' : 'Tax & Payment'}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+              <div>
                     <Label htmlFor="taxPercentage">
                       {language === 'ur' ? 'کمپنی ٹیکس (%)' : 'Company Tax (%)'}
                     </Label>
@@ -572,7 +572,7 @@ export default function Vouchers() {
                       onChange={(e) => setFormData({...formData, taxPercentage: parseFloat(e.target.value) || 0})}
                       placeholder="0"
                     />
-                  </div>
+              </div>
               <div>
                     <Label htmlFor="paymentMethod">
                       {language === 'ur' ? 'ادائیگی کا طریقہ' : 'Payment Method'}
@@ -591,8 +591,8 @@ export default function Vouchers() {
                         <SelectItem value="check">{language === 'ur' ? 'چیک' : 'Check'}</SelectItem>
                       </SelectContent>
                     </Select>
-              </div>
-                  <div>
+            </div>
+              <div>
                     <Label htmlFor="paidAmount">
                       {language === 'ur' ? 'ادا شدہ رقم' : 'Paid Amount'}
                     </Label>
@@ -604,7 +604,7 @@ export default function Vouchers() {
                       onChange={(e) => setFormData({...formData, paidAmount: parseFloat(e.target.value) || 0})}
                       placeholder="0"
                     />
-            </div>
+              </div>
               <div>
                     <Label htmlFor="paymentStatus">
                       {language === 'ur' ? 'ادائیگی کی حالت' : 'Payment Status'}
@@ -622,7 +622,7 @@ export default function Vouchers() {
                         <SelectItem value="partial">{language === 'ur' ? 'جزوی' : 'Partial'}</SelectItem>
                       </SelectContent>
                     </Select>
-              </div>
+            </div>
             </div>
 
               <div>
@@ -636,8 +636,8 @@ export default function Vouchers() {
                     placeholder={language === 'ur' ? 'اضافی نوٹس' : 'Additional notes'}
                     rows={3}
                   />
-                </div>
               </div>
+            </div>
 
               {/* Summary */}
               {selectedBilties.length > 0 && (
@@ -653,8 +653,8 @@ export default function Vouchers() {
                     <div className="flex justify-between text-gray-600">
                       <span>{language === 'ur' ? 'منتخب بلٹیز:' : 'Selected Bilties:'}</span>
                       <span className="font-medium">{selectedBilties.length}</span>
-                    </div>
-                    
+      </div>
+
                     {/* Subtotal */}
                     <div className="flex justify-between">
                       <span className="font-medium">{language === 'ur' ? 'کل غیر ادا شدہ:' : 'Total Unpaid:'}</span>
@@ -739,8 +739,8 @@ export default function Vouchers() {
                 <SelectItem value="paid">{language === 'ur' ? 'ادا شدہ' : 'Paid'}</SelectItem>
                   <SelectItem value="unpaid">{language === 'ur' ? 'غیر ادا شدہ' : 'Unpaid'}</SelectItem>
                   <SelectItem value="partial">{language === 'ur' ? 'جزوی' : 'Partial'}</SelectItem>
-                </SelectContent>
-              </Select>
+              </SelectContent>
+            </Select>
             </div>
             <div>
               <Label htmlFor="paymentFilter">
@@ -833,7 +833,7 @@ export default function Vouchers() {
                           onClick={() => handleViewVoucher(voucher)}
                         >
                           <Eye className="w-4 h-4" />
-                        </Button>
+                          </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -880,8 +880,8 @@ export default function Vouchers() {
                   {selectedVoucher.customerEmail && (
                     <div className="col-span-2"><strong>{language === 'ur' ? 'ای میل:' : 'Email:'}</strong> {selectedVoucher.customerEmail}</div>
                   )}
-            </div>
-          </div>
+              </div>
+              </div>
 
               {/* Bilties */}
               <div>
@@ -906,7 +906,7 @@ export default function Vouchers() {
                     ))}
                   </TableBody>
                 </Table>
-            </div>
+          </div>
 
               {/* Financial Summary */}
               <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
@@ -925,21 +925,21 @@ export default function Vouchers() {
                       : (language === 'ur' ? 'غیر ادا شدہ' : 'Unpaid')
                     }
                   </Badge>
+              </div>
             </div>
-          </div>
 
               {/* Download Actions */}
               <div className="flex justify-end pt-4 border-t">
-                <Button
+            <Button 
                   onClick={() => handleDownloadVoucherReceipt(selectedVoucher)}
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  <Download className="w-4 h-4 mr-2" />
+                    <Download className="w-4 h-4 mr-2" />
                   {language === 'ur' ? 'واؤچر ڈاؤن لوڈ کریں' : 'Download Voucher'}
-            </Button>
+                  </Button>
               </div>
             </div>
-          )}
+            )}
         </DialogContent>
       </Dialog>
     </div>

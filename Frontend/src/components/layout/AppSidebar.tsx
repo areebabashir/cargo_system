@@ -65,6 +65,11 @@ const navigationItems = [
     icon: Users,
   },
   {
+    title: { en: "Customers", ur: "کسٹمرز" },
+    url: "/customers",
+    icon: Users,
+  },
+  {
     title: { en: "Trips", ur: "ٹرپ" },
     url: "/trips",
     icon: Truck,

@@ -19,6 +19,7 @@ import Claims from "./pages/Claims";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import Customers from "./pages/Customers";
 
 const queryClient = new QueryClient();
 
@@ -109,6 +110,13 @@ const App = () => (
               <ProtectedRoute>
                 <DashboardLayout>
                   <Settings />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/customers" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <Customers />
                 </DashboardLayout>
               </ProtectedRoute>
             } />
