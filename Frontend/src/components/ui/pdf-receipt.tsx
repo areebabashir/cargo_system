@@ -525,57 +525,6 @@ export const generatePDFReceipt = async (data: ReceiptData, language: 'en' | 'ur
           </div>
         </div>
       ` : `
-        <!-- Customer Information -->
-        <div style="
-          margin-bottom: 15px;
-          padding: 10px;
-          background: #f8fafc;
-          border-radius: 6px;
-          border: 1px solid #e2e8f0;
-        ">
-          <h3 style="
-            color: #039bb4;
-            font-size: 11px;
-            font-weight: 600;
-            margin: 0 0 6px 0;
-            text-transform: uppercase;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 4px;
-          ">
-            ${t.customerInfo}
-          </h3>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div>
-              <div style="margin-bottom: 3px;">
-                <span style="font-weight: 600; color: #475569; font-size: 9px;">${t.name}</span>
-                <span style="color: #1e293b; font-weight: 600; font-size: 10px;"> ${data.customerName || 'N/A'}</span>
-              </div>
-              <div style="margin-bottom: 3px;">
-                <span style="font-weight: 600; color: #475569; font-size: 9px;">${t.phone}</span>
-                <span style="color: #1e293b; font-size: 10px;"> ${data.customerPhone || 'N/A'}</span>
-              </div>
-              ${data.customerEmail ? `
-                <div style="margin-bottom: 3px;">
-                  <span style="font-weight: 600; color: #475569; font-size: 9px;">Email:</span>
-                  <span style="color: #1e293b; font-size: 10px;"> ${data.customerEmail}</span>
-                </div>
-              ` : ''}
-            </div>
-            <div>
-              <div style="margin-bottom: 3px;">
-                <span style="font-weight: 600; color: #475569; font-size: 9px;">${t.method}</span>
-                <span style="color: #1e293b; font-size: 10px;"> ${data.paymentMethod || 'N/A'}</span>
-              </div>
-              ${data.taxPercentage ? `
-                <div style="margin-bottom: 3px;">
-                  <span style="font-weight: 600; color: #475569; font-size: 9px;">${t.taxRate}</span>
-                  <span style="color: #1e293b; font-size: 10px;"> ${data.taxPercentage}%</span>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-        </div>
-
         ${data.bilties && data.bilties.length > 0 ? `
           <!-- Included Bilties Table -->
           <div style="margin-bottom: 15px;">
@@ -597,7 +546,7 @@ export const generatePDFReceipt = async (data: ReceiptData, language: 'en' | 'ur
             ">
               <div style="
                 display: grid;
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr 0.7fr 1fr 1fr 1fr;
                 background: #f8fafc;
                 border-bottom: 1px solid #e2e8f0;
                 font-weight: 600;
@@ -605,17 +554,31 @@ export const generatePDFReceipt = async (data: ReceiptData, language: 'en' | 'ur
                 color: #475569;
               ">
                 <div style="padding: 6px 8px;">${t.biltyNumber}</div>
-                <div style="padding: 6px 8px;">${t.amount}</div>
+                <div style="padding: 6px 8px;">${t.date}</div>
+                <div style="padding: 6px 8px;">${t.adda}</div>
+                <div style="padding: 6px 8px;">${t.sender}</div>
+                <div style="padding: 6px 8px;">${t.receiver}</div>
+                <div style="padding: 6px 8px;">${t.qty}</div>
+                <div style="padding: 6px 8px;">${t.charges}</div>
+                <div style="padding: 6px 8px;">${t.received}</div>
+                <div style="padding: 6px 8px;">${t.remaining}</div>
               </div>
               ${data.bilties.map(bilty => `
                 <div style="
                   display: grid;
-                  grid-template-columns: 1fr 1fr;
+                  grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr 0.7fr 1fr 1fr 1fr;
                   border-bottom: 1px solid #f1f5f9;
                   font-size: 9px;
                 ">
                   <div style="padding: 4px 8px;">${bilty.biltyNumber}</div>
-                  <div style="padding: 4px 8px; font-weight: 600;">₨${bilty.amount.toLocaleString()}</div>
+                  <div style="padding: 4px 8px;">${bilty.date || '-'}</div>
+                  <div style="padding: 4px 8px;">${bilty.addaName || '-'}</div>
+                  <div style="padding: 4px 8px;">${bilty.senderName || '-'}</div>
+                  <div style="padding: 4px 8px;">${bilty.receiverName || '-'}</div>
+                  <div style="padding: 4px 8px;">${bilty.quantity ?? '-'}</div>
+                  <div style="padding: 4px 8px;">${bilty.totalCharges !== undefined ? 'PKR ' + bilty.totalCharges.toLocaleString() : '-'}</div>
+                  <div style="padding: 4px 8px;">${bilty.receivedFare !== undefined ? 'PKR ' + bilty.receivedFare.toLocaleString() : '-'}</div>
+                  <div style="padding: 4px 8px;">${bilty.remainingFare !== undefined ? 'PKR ' + bilty.remainingFare.toLocaleString() : '-'}</div>
                 </div>
               `).join('')}
             </div>

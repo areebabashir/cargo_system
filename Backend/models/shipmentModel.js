@@ -117,6 +117,10 @@ const shipmentSchema = new mongoose.Schema({
     enum: ['self', 'delivery'],
     default: 'delivery',
   },
+  totalCharges: {
+    type: Number,
+    default: 0,
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -137,8 +141,8 @@ shipmentSchema.pre('save', function(next) {
   this.totalFare = this.items.reduce((sum, item) => sum + (item.totalFare || 0), 0);
   
   // Calculate remaining fare
-  const totalCharges = this.totalFare + (this.mazdoori || 0) + (this.biltyCharges || 0) + (this.reriCharges || 0) + (this.extraCharges || 0);
-  this.remainingFare = totalCharges - (this.receivedFare || 0);
+  this.totalCharges = this.totalFare + (this.mazdoori || 0) + (this.biltyCharges || 0) + (this.reriCharges || 0) + (this.extraCharges || 0);
+  this.remainingFare = this.totalCharges - (this.receivedFare || 0);
   
   next();
 });

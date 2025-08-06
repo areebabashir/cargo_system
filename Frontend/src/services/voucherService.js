@@ -41,7 +41,7 @@ export const voucherService = {
       method: 'POST',
       body: JSON.stringify(voucherData),
     });
-  },
+  },  
 
   // Get all vouchers with optional filters
   getVouchers: async (filters = {}) => {
