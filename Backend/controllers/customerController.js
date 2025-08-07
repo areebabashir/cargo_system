@@ -1,52 +1,43 @@
 import Customer from '../models/customerModel.js';
+import Shipment from '../models/shipmentModel.js';
 
 // Create new customer
 export const createCustomer = async (req, res) => {
   try {
     const {
       name,
-      biltyNumber,
-      date,
-      quantity,
-      paymentStatus,
-      deliveryType,
-      phone,
       address,
-      totalAmount,
-      paidAmount,
-      notes
+      phone,
+      bilties = []
     } = req.body;
 
     // Validate required fields
-    if (!name || !biltyNumber || !quantity) {
+    if (!name) {
       return res.status(400).json({
         success: false,
-        message: 'Name, bilty number, and quantity are required'
+        message: 'Name is required'
       });
     }
 
-    // Check if bilty number already exists
-    const existingCustomer = await Customer.findOne({ biltyNumber });
+    // Check if customer with same name and phone already exists
+    const existingCustomer = await Customer.findOne({ 
+      name: name.trim(),
+      phone: phone?.trim()
+    });
+    
     if (existingCustomer) {
       return res.status(400).json({
         success: false,
-        message: 'Customer with this bilty number already exists'
+        message: 'Customer with this name and phone already exists'
       });
     }
 
     // Create customer data
     const customerData = {
       name: name.trim(),
-      biltyNumber: biltyNumber.trim(),
-      date: date ? new Date(date) : new Date(),
-      quantity: parseInt(quantity),
-      paymentStatus: paymentStatus || 'cash',
-      deliveryType: deliveryType || 'delivery_by_distributor',
-      phone: phone?.trim(),
       address: address?.trim(),
-      totalAmount: parseFloat(totalAmount) || 0,
-      paidAmount: parseFloat(paidAmount) || 0,
-      notes: notes?.trim(),
+      phone: phone?.trim(),
+      bilties: bilties,
       createdBy: req.user._id
     };
 
@@ -76,33 +67,21 @@ export const getCustomers = async (req, res) => {
       page = 1,
       limit = 10,
       search,
-      paymentStatus,
-      deliveryType,
       status,
-      sortBy = 'date',
+      sortBy = 'createdAt',
       sortOrder = 'desc'
     } = req.query;
 
     // Build filter object
     const filter = {};
 
-    // Search in name, bilty number, phone
+    // Search in name, phone, bilty numbers
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
-        { biltyNumber: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
+        { phone: { $regex: search, $options: 'i' } },
+        { 'bilties.biltyNumber': { $regex: search, $options: 'i' } }
       ];
-    }
-
-    // Filter by payment status
-    if (paymentStatus && paymentStatus !== 'all') {
-      filter.paymentStatus = paymentStatus;
-    }
-
-    // Filter by delivery type
-    if (deliveryType && deliveryType !== 'all') {
-      filter.deliveryType = deliveryType;
     }
 
     // Filter by status
@@ -129,14 +108,14 @@ export const getCustomers = async (req, res) => {
     const totalPages = Math.ceil(totalCustomers / parseInt(limit));
 
     // Calculate summary statistics
-    const totalAmount = await Customer.aggregate([
+    const totalAmountDue = await Customer.aggregate([
       { $match: filter },
-      { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+      { $group: { _id: null, total: { $sum: '$totalAmountDue' } } }
     ]);
 
-    const paidAmount = await Customer.aggregate([
+    const totalBilties = await Customer.aggregate([
       { $match: filter },
-      { $group: { _id: null, total: { $sum: '$paidAmount' } } }
+      { $group: { _id: null, total: { $sum: { $size: '$bilties' } } } }
     ]);
 
     res.status(200).json({
@@ -150,9 +129,8 @@ export const getCustomers = async (req, res) => {
         hasPrev: parseInt(page) > 1
       },
       summary: {
-        totalAmount: totalAmount[0]?.total || 0,
-        paidAmount: paidAmount[0]?.total || 0,
-        remainingAmount: (totalAmount[0]?.total || 0) - (paidAmount[0]?.total || 0)
+        totalAmountDue: totalAmountDue[0]?.total || 0,
+        totalBilties: totalBilties[0]?.total || 0
       }
     });
 
@@ -211,36 +189,13 @@ export const updateCustomer = async (req, res) => {
       });
     }
 
-    // If bilty number is being updated, check for duplicates
-    if (updateData.biltyNumber && updateData.biltyNumber !== customer.biltyNumber) {
-      const existingCustomer = await Customer.findOne({ 
-        biltyNumber: updateData.biltyNumber,
-        _id: { $ne: id }
-      });
-      
-      if (existingCustomer) {
-        return res.status(400).json({
-          success: false,
-          message: 'Customer with this bilty number already exists'
-        });
-      }
-    }
-
     // Clean and validate update data
     const cleanUpdateData = {};
     
     if (updateData.name) cleanUpdateData.name = updateData.name.trim();
-    if (updateData.biltyNumber) cleanUpdateData.biltyNumber = updateData.biltyNumber.trim();
-    if (updateData.date) cleanUpdateData.date = new Date(updateData.date);
-    if (updateData.quantity) cleanUpdateData.quantity = parseInt(updateData.quantity);
-    if (updateData.paymentStatus) cleanUpdateData.paymentStatus = updateData.paymentStatus;
-    if (updateData.deliveryType) cleanUpdateData.deliveryType = updateData.deliveryType;
-    if (updateData.phone !== undefined) cleanUpdateData.phone = updateData.phone?.trim();
     if (updateData.address !== undefined) cleanUpdateData.address = updateData.address?.trim();
-    if (updateData.totalAmount !== undefined) cleanUpdateData.totalAmount = parseFloat(updateData.totalAmount) || 0;
-    if (updateData.paidAmount !== undefined) cleanUpdateData.paidAmount = parseFloat(updateData.paidAmount) || 0;
+    if (updateData.phone !== undefined) cleanUpdateData.phone = updateData.phone?.trim();
     if (updateData.status) cleanUpdateData.status = updateData.status;
-    if (updateData.notes !== undefined) cleanUpdateData.notes = updateData.notes?.trim();
 
     // Update customer
     const updatedCustomer = await Customer.findByIdAndUpdate(
@@ -294,33 +249,168 @@ export const deleteCustomer = async (req, res) => {
   }
 };
 
+// Add bilty to customer
+export const addBiltyToCustomer = async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { biltyNumber, amount_to_be_paid } = req.body;
+
+    if (!biltyNumber || amount_to_be_paid === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bilty number and amount are required'
+      });
+    }
+
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    // Check if bilty already exists for this customer
+    const existingBilty = customer.bilties.find(b => b.biltyNumber === biltyNumber);
+    if (existingBilty) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bilty already exists for this customer'
+      });
+    }
+
+    // Add bilty to customer
+    customer.bilties.push({
+      biltyNumber,
+      amount_to_be_paid: parseFloat(amount_to_be_paid),
+      payment_status: 'unpaid'
+    });
+
+    await customer.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Bilty added to customer successfully',
+      data: customer
+    });
+
+  } catch (error) {
+    console.error('Error adding bilty to customer:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error adding bilty to customer',
+      error: error.message
+    });
+  }
+};
+
+// Update bilty payment status
+export const updateBiltyPaymentStatus = async (req, res) => {
+  try {
+    const { customerId, biltyNumber } = req.params;
+    const { payment_status } = req.body;
+
+    if (!payment_status || !['paid', 'unpaid'].includes(payment_status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid payment status is required'
+      });
+    }
+
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    // Find and update the bilty
+    const biltyIndex = customer.bilties.findIndex(b => b.biltyNumber === biltyNumber);
+    if (biltyIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bilty not found for this customer'
+      });
+    }
+
+    const bilty = customer.bilties[biltyIndex];
+
+    // Validation: Cannot mark as paid if amount_to_be_paid is 0
+    if (payment_status === 'paid' && bilty.amount_to_be_paid <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot mark as paid when amount to be paid is 0 or less'
+      });
+    }
+
+    bilty.payment_status = payment_status;
+    
+    // If marking as paid, set amount_to_be_paid to 0 and record paid_by_customer
+    if (payment_status === 'paid') {
+      bilty.paid_by_customer = bilty.amount_to_be_paid;
+      bilty.amount_to_be_paid = 0;
+    } else {
+      // If marking as unpaid, reset paid_by_customer to 0
+      bilty.paid_by_customer = 0;
+    }
+
+    await customer.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Bilty payment status updated successfully',
+      data: customer
+    });
+
+  } catch (error) {
+    console.error('Error updating bilty payment status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating bilty payment status',
+      error: error.message
+    });
+  }
+};
+
+// Remove bilty from customer
+export const removeBiltyFromCustomer = async (req, res) => {
+  try {
+    const { customerId, biltyNumber } = req.params;
+
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    // Remove bilty from customer
+    customer.bilties = customer.bilties.filter(b => b.biltyNumber !== biltyNumber);
+    await customer.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Bilty removed from customer successfully',
+      data: customer
+    });
+
+  } catch (error) {
+    console.error('Error removing bilty from customer:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error removing bilty from customer',
+      error: error.message
+    });
+  }
+};
+
 // Get customer statistics
 export const getCustomerStats = async (req, res) => {
   try {
     // Total customers
     const totalCustomers = await Customer.countDocuments();
-
-    // Customers by payment status
-    const paymentStatusStats = await Customer.aggregate([
-      {
-        $group: {
-          _id: '$paymentStatus',
-          count: { $sum: 1 },
-          totalAmount: { $sum: '$totalAmount' },
-          paidAmount: { $sum: '$paidAmount' }
-        }
-      }
-    ]);
-
-    // Customers by delivery type
-    const deliveryTypeStats = await Customer.aggregate([
-      {
-        $group: {
-          _id: '$deliveryType',
-          count: { $sum: 1 }
-        }
-      }
-    ]);
 
     // Customers by status
     const statusStats = await Customer.aggregate([
@@ -332,36 +422,39 @@ export const getCustomerStats = async (req, res) => {
       }
     ]);
 
+    // Total bilties
+    const totalBilties = await Customer.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: { $size: '$bilties' } }
+        }
+      }
+    ]);
+
+    // Total amount due
+    const totalAmountDue = await Customer.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$totalAmountDue' }
+        }
+      }
+    ]);
+
     // Recent customers (last 7 days)
     const recentCustomers = await Customer.countDocuments({
       createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
     });
-
-    // Financial summary
-    const financialSummary = await Customer.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalAmount: { $sum: '$totalAmount' },
-          paidAmount: { $sum: '$paidAmount' },
-          remainingAmount: { $sum: '$remainingAmount' }
-        }
-      }
-    ]);
 
     res.status(200).json({
       success: true,
       data: {
         totalCustomers,
         recentCustomers,
-        paymentStatusStats,
-        deliveryTypeStats,
         statusStats,
-        financialSummary: financialSummary[0] || {
-          totalAmount: 0,
-          paidAmount: 0,
-          remainingAmount: 0
-        }
+        totalBilties: totalBilties[0]?.total || 0,
+        totalAmountDue: totalAmountDue[0]?.total || 0
       }
     });
 
@@ -375,13 +468,14 @@ export const getCustomerStats = async (req, res) => {
   }
 };
 
-// Search customers by bilty number
+// Search customer by bilty number
 export const searchCustomerByBilty = async (req, res) => {
   try {
     const { biltyNumber } = req.params;
 
-    const customer = await Customer.findOne({ biltyNumber })
-      .populate('createdBy', 'name email');
+    const customer = await Customer.findOne({ 
+      'bilties.biltyNumber': biltyNumber 
+    }).populate('createdBy', 'name email');
 
     if (!customer) {
       return res.status(404).json({

@@ -97,6 +97,10 @@ const shipmentSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  paid_by_customer: {
+    type: Number,
+    default: 0,
+  },
   deliveryStatus: {
     type: String,
     enum: ['delivered', 'pending', 'returned'],
@@ -140,9 +144,21 @@ shipmentSchema.pre('save', function(next) {
   // Calculate total fare from items
   this.totalFare = this.items.reduce((sum, item) => sum + (item.totalFare || 0), 0);
   
-  // Calculate remaining fare
+  // Calculate total charges
   this.totalCharges = this.totalFare + (this.mazdoori || 0) + (this.biltyCharges || 0) + (this.reriCharges || 0) + (this.extraCharges || 0);
-  this.remainingFare = this.totalCharges - (this.receivedFare || 0);
+  
+  // Handle payment status logic
+  if (this.paymentStatus === 'paid') {
+    // If marked as paid, set remainingFare to 0 and update paid_by_customer
+    this.remainingFare = 0;
+    if (this.paid_by_customer === 0) {
+      // Only update paid_by_customer if it hasn't been set yet
+      this.paid_by_customer = this.totalCharges - (this.receivedFare || 0);
+    }
+  } else {
+    // If unpaid, calculate remaining fare normally
+    this.remainingFare = this.totalCharges - (this.receivedFare || 0);
+  }
   
   next();
 });

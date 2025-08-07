@@ -3,23 +3,33 @@ import axios from 'axios';
 
 const PAGE_SIZE = 10;
 
-const paymentStatusOptions = [
+const statusOptions = [
   { value: 'all', label: 'All' },
-  { value: 'cash', label: 'Cash' },
-  { value: 'online', label: 'Online' },
-  { value: 'cod', label: 'COD' },
-];
-const deliveryTypeOptions = [
-  { value: 'all', label: 'All' },
-  { value: 'self_pickup', label: 'Self Pickup' },
-  { value: 'delivery_by_distributor', label: 'Delivery by Distributor' },
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
 ];
 
-function CustomerDetailModal({ customer, onClose }) {
+function CustomerDetailModal({ customer, onClose, onUpdatePaymentStatus }) {
   if (!customer) return null;
+
+  const handlePaymentStatusToggle = async (biltyNumber, currentStatus) => {
+    const newStatus = currentStatus === 'paid' ? 'unpaid' : 'paid';
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(
+        `http://localhost:8000/api/customers/${customer._id}/bilties/${biltyNumber}/payment-status`,
+        { payment_status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      onUpdatePaymentStatus();
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 relative">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 relative max-h-[90vh] overflow-y-auto">
         <button
           className="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-xl"
           onClick={onClose}
@@ -28,18 +38,69 @@ function CustomerDetailModal({ customer, onClose }) {
           ×
         </button>
         <h2 className="text-xl font-bold mb-4">Customer Details</h2>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        
+        {/* Customer Info */}
+        <div className="grid grid-cols-2 gap-4 text-sm mb-6">
           <div><span className="font-medium">Name:</span> {customer.name}</div>
-          <div><span className="font-medium">Bilty Number:</span> {customer.biltyNumber}</div>
-          <div><span className="font-medium">Date:</span> {customer.date ? new Date(customer.date).toLocaleDateString() : ''}</div>
-          <div><span className="font-medium">Quantity:</span> {customer.quantity}</div>
-          <div><span className="font-medium">Payment Status:</span> {customer.paymentStatus}</div>
-          <div><span className="font-medium">Delivery Type:</span> {customer.deliveryType?.replace(/_/g, ' ')}</div>
-          <div><span className="font-medium">Phone:</span> {customer.phone}</div>
-          <div><span className="font-medium">Address:</span> {customer.address}</div>
+          <div><span className="font-medium">Phone:</span> {customer.phone || 'N/A'}</div>
+          <div><span className="font-medium">Address:</span> {customer.address || 'N/A'}</div>
           <div><span className="font-medium">Status:</span> {customer.status}</div>
-          <div className="col-span-2"><span className="font-medium">Notes:</span> {customer.notes}</div>
+          <div><span className="font-medium">Total Amount Due:</span> ₨{customer.totalAmountDue?.toLocaleString() || 0}</div>
+          <div><span className="font-medium">Total Bilties:</span> {customer.bilties?.length || 0}</div>
         </div>
+
+        {/* Bilties Table */}
+        {customer.bilties && customer.bilties.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Bilties</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm border">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 border">Bilty Number</th>
+                    <th className="p-2 border">Amount to be Paid</th>
+                    <th className="p-2 border">Paid by Customer</th>
+                    <th className="p-2 border">Payment Status</th>
+                    <th className="p-2 border">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {customer.bilties.map((bilty, index) => (
+                    <tr key={index} className="border-b">
+                      <td className="p-2 border">{bilty.biltyNumber}</td>
+                      <td className="p-2 border">₨{bilty.amount_to_be_paid?.toLocaleString() || 0}</td>
+                      <td className="p-2 border">₨{bilty.paid_by_customer?.toLocaleString() || 0}</td>
+                      <td className="p-2 border">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          bilty.payment_status === 'paid' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {bilty.payment_status}
+                        </span>
+                      </td>
+                      <td className="p-2 border">
+                        {bilty.amount_to_be_paid > 0 && bilty.paid_by_customer === 0 ? (
+                          <button
+                            onClick={() => handlePaymentStatusToggle(bilty.biltyNumber, bilty.payment_status)}
+                            className="bg-green-500 text-white hover:bg-green-600 px-3 py-1 rounded text-xs"
+                          >
+                            Mark Paid by Customer
+                          </button>
+                        ) : bilty.paid_by_customer > 0 ? (
+                          <span className="text-green-600 text-xs font-medium">Already paid by customer</span>
+                        ) : (
+                          <span className="text-gray-500 text-xs">No amount due</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <div className="mt-6 flex justify-end">
           <button
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -56,8 +117,7 @@ function CustomerDetailModal({ customer, onClose }) {
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
-  const [paymentStatus, setPaymentStatus] = useState('all');
-  const [deliveryType, setDeliveryType] = useState('all');
+  const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -71,8 +131,7 @@ export default function Customers() {
         page,
         limit: PAGE_SIZE,
         search,
-        paymentStatus,
-        deliveryType,
+        status,
       };
       const res = await axios.get('http://localhost:8000/api/customers/get/all', {
         params,
@@ -91,7 +150,12 @@ export default function Customers() {
   useEffect(() => {
     fetchCustomers();
     // eslint-disable-next-line
-  }, [search, paymentStatus, deliveryType, page]);
+  }, [search, status, page]);
+
+  const handleUpdatePaymentStatus = () => {
+    fetchCustomers();
+    setSelectedCustomer(null);
+  };
 
   return (
     <div className="p-6">
@@ -102,31 +166,19 @@ export default function Customers() {
           <input
             type="text"
             className="border rounded px-2 py-1 w-48"
-            placeholder="Name, Bilty, Phone..."
+            placeholder="Name, Phone, Bilty..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Payment Status</label>
+          <label className="block text-sm font-medium mb-1">Status</label>
           <select
             className="border rounded px-2 py-1"
-            value={paymentStatus}
-            onChange={e => { setPaymentStatus(e.target.value); setPage(1); }}
+            value={status}
+            onChange={e => { setStatus(e.target.value); setPage(1); }}
           >
-            {paymentStatusOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Delivery Type</label>
-          <select
-            className="border rounded px-2 py-1"
-            value={deliveryType}
-            onChange={e => { setDeliveryType(e.target.value); setPage(1); }}
-          >
-            {deliveryTypeOptions.map(opt => (
+            {statusOptions.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
@@ -138,20 +190,18 @@ export default function Customers() {
             <tr className="bg-gray-100">
               <th className="p-2">#</th>
               <th className="p-2">Name</th>
-              <th className="p-2">Bilty Number</th>
-              <th className="p-2">Date</th>
-              <th className="p-2">Quantity</th>
-              <th className="p-2">Payment Status</th>
-              <th className="p-2">Delivery Type</th>
               <th className="p-2">Phone</th>
               <th className="p-2">Address</th>
+              <th className="p-2">Status</th>
+              <th className="p-2">Total Amount Due</th>
+              <th className="p-2">Total Bilties</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} className="text-center p-4">Loading...</td></tr>
+              <tr><td colSpan={7} className="text-center p-4">Loading...</td></tr>
             ) : customers.length === 0 ? (
-              <tr><td colSpan={9} className="text-center p-4">No customers found.</td></tr>
+              <tr><td colSpan={7} className="text-center p-4">No customers found.</td></tr>
             ) : customers.map((c, i) => (
               <tr
                 key={c._id}
@@ -160,13 +210,11 @@ export default function Customers() {
               >
                 <td className="p-2">{(page - 1) * PAGE_SIZE + i + 1}</td>
                 <td className="p-2 font-semibold">{c.name}</td>
-                <td className="p-2">{c.biltyNumber}</td>
-                <td className="p-2">{c.date ? new Date(c.date).toLocaleDateString() : ''}</td>
-                <td className="p-2">{c.quantity}</td>
-                <td className="p-2 capitalize">{c.paymentStatus}</td>
-                <td className="p-2 capitalize">{c.deliveryType.replace(/_/g, ' ')}</td>
-                <td className="p-2">{c.phone}</td>
-                <td className="p-2">{c.address}</td>
+                <td className="p-2">{c.phone || 'N/A'}</td>
+                <td className="p-2">{c.address || 'N/A'}</td>
+                <td className="p-2 capitalize">{c.status}</td>
+                <td className="p-2 font-semibold">₨{c.totalAmountDue?.toLocaleString() || 0}</td>
+                <td className="p-2">{c.bilties?.length || 0}</td>
               </tr>
             ))}
           </tbody>
@@ -185,7 +233,11 @@ export default function Customers() {
           disabled={page === totalPages}
         >Next</button>
       </div>
-      <CustomerDetailModal customer={selectedCustomer} onClose={() => setSelectedCustomer(null)} />
+      <CustomerDetailModal 
+        customer={selectedCustomer} 
+        onClose={() => setSelectedCustomer(null)}
+        onUpdatePaymentStatus={handleUpdatePaymentStatus}
+      />
     </div>
   );
 }

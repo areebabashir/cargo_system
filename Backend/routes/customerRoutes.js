@@ -6,7 +6,10 @@ import {
   updateCustomer,
   deleteCustomer,
   getCustomerStats,
-  searchCustomerByBilty
+  searchCustomerByBilty,
+  addBiltyToCustomer,
+  updateBiltyPaymentStatus,
+  removeBiltyFromCustomer
 } from '../controllers/customerController.js';
 import { requireSignIn } from '../Middlewares/authMiddlewares.js';
 
@@ -35,5 +38,14 @@ router.put('/update/:id', updateCustomer);
 
 // Delete customer
 router.delete('/delete/:id', deleteCustomer);
+
+// Add bilty to customer
+router.post('/:customerId/bilties', addBiltyToCustomer);
+
+// Update bilty payment status
+router.put('/:customerId/bilties/:biltyNumber/payment-status', updateBiltyPaymentStatus);
+
+// Remove bilty from customer
+router.delete('/:customerId/bilties/:biltyNumber', removeBiltyFromCustomer);
 
 export default router;

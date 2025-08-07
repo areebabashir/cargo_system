@@ -41,6 +41,7 @@ interface BiltyData {
   extraCharges: number;
   receivedFare: number;
   remainingFare: number;
+  paid_by_customer?: number;
   deliveryStatus: 'delivered' | 'pending' | 'returned';
   dateTime: string;
   vehicleNumber?: string;
@@ -940,7 +941,7 @@ export default function Shipments() {
                     <TableCell>{bilty.senderName}</TableCell>
                     <TableCell>{bilty.receiverName}</TableCell>
                     <TableCell>{bilty.cityName}</TableCell>
-                    <TableCell>PKR {bilty.totalFare}</TableCell>
+                    <TableCell>PKR {bilty.totalCharges}</TableCell>
                   <TableCell>
                       <Badge className={getPaymentColor(bilty.paymentStatus)}>
                         {bilty.paymentStatus === 'paid' 
@@ -1063,15 +1064,76 @@ export default function Shipments() {
                   <div><strong>{language === 'ur' ? 'اضافی چارجز:' : 'Extra Charges:'}</strong> PKR {selectedBilty.extraCharges || 0}</div>
                   <div><strong>{language === 'ur' ? 'وصول شدہ:' : 'Received:'}</strong> <span className="text-green-600 font-bold">PKR {selectedBilty.receivedFare || 0}</span></div>
                   <div><strong>{language === 'ur' ? 'باقی:' : 'Remaining:'}</strong> <span className="text-red-600 font-bold">PKR {selectedBilty.remainingFare}</span></div>
+                  <div><strong>{language === 'ur' ? 'گاہک کے ذریعہ ادا شدہ:' : 'Paid by Customer:'}</strong> <span className="text-purple-600 font-bold">PKR {selectedBilty.paid_by_customer || 0}</span></div>
                 </div>
-                <div>
-                  <strong>{language === 'ur' ? 'ادائیگی:' : 'Payment:'}</strong>
-                  <Badge className={`ml-2 ${getPaymentColor(selectedBilty.paymentStatus)}`}>
-                    {selectedBilty.paymentStatus === 'paid' 
-                      ? (language === 'ur' ? 'ادا شدہ' : 'Paid')
-                      : (language === 'ur' ? 'غیر ادا شدہ' : 'Unpaid')
-                    }
-                  </Badge>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <strong>{language === 'ur' ? 'ادائیگی:' : 'Payment:'}</strong>
+                    <Badge className={`ml-2 ${getPaymentColor(selectedBilty.paymentStatus)}`}>
+                      {selectedBilty.paymentStatus === 'paid' 
+                        ? (language === 'ur' ? 'ادا شدہ' : 'Paid')
+                        : (language === 'ur' ? 'غیر ادا شدہ' : 'Unpaid')
+                      }
+                    </Badge>
+                  </div>
+                  {selectedBilty.remainingFare > 0 ? (
+                    <Button
+                      onClick={async () => {
+                        try {
+                          console.log('Selected bilty:', selectedBilty);
+                          console.log('Selected bilty id:', selectedBilty.id);
+                          const token = localStorage.getItem('token');
+                          const newStatus = 'paid'; // Always mark as paid when button is clicked
+                          
+                          // Update shipment payment status
+                          await fetch(`http://localhost:8000/api/shipments/update/${selectedBilty.id}`, {
+                            method: 'PUT',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                              paymentStatus: newStatus
+                            })
+                          });
+
+                          // Update customer bilty payment status
+                          const customerResponse = await fetch(`http://localhost:8000/api/customers/search/bilty/${selectedBilty.biltyNumber}`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                          });
+                          
+                          if (customerResponse.ok) {
+                            const customerData = await customerResponse.json();
+                            if (customerData.success && customerData.data) {
+                              await fetch(`http://localhost:8000/api/customers/${customerData.data._id}/bilties/${selectedBilty.biltyNumber}/payment-status`, {
+                                method: 'PUT',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${token}`
+                                },
+                                body: JSON.stringify({
+                                  payment_status: newStatus
+                                })
+                              });
+                            }
+                          }
+
+                          // Reload shipments to reflect changes
+                          loadShipments();
+                          setIsViewOpen(false);
+                        } catch (error) {
+                          console.error('Error updating payment status:', error);
+                        }
+                      }}
+                      className="bg-green-500 hover:bg-green-600 text-white"
+                    >
+                      {language === 'ur' ? 'گاہک کے ذریعہ ادا شدہ کریں' : 'Mark Paid by Customer'}
+                    </Button>
+                  ) : (
+                    <span className="text-green-600 font-medium">
+                      {language === 'ur' ? 'پہلے سے ادا شدہ' : 'Already Paid'}
+                    </span>
+                  )}
                 </div>
               </div>
               

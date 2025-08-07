@@ -31,35 +31,58 @@ export const createShipment = async (req, res) => {
     const shipment = new Shipment(shipmentData);
     await shipment.save();
 
-    // --- Auto-create Customer from receiver info ---
-    const customerExists = await Customer.findOne({ biltyNumber: shipment.biltyNumber });
-    if (!customerExists) {
-      const customerData = {
+    // Transform _id to id for frontend compatibility
+    const shipmentObj = shipment.toObject();
+    shipmentObj.id = shipmentObj._id;
+    delete shipmentObj._id;
+
+    // --- Auto-create/update Customer from receiver info ---
+    try {
+      // Check if customer exists with same name and phone
+      let customer = await Customer.findOne({ 
         name: shipment.receiverName,
-        biltyNumber: shipment.biltyNumber,
-        date: shipment.dateTime ? new Date(shipment.dateTime) : new Date(),
-        quantity: shipment.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 1,
-        paymentStatus: shipment.paymentStatus === 'paid' ? 'cash' : 'cod', // Map as best as possible
-        deliveryType: shipment.pickupType === 'self' ? 'self_pickup' : 'delivery_by_distributor',
-        phone: shipment.receiverPhone,
-        address: shipment.receiverAddress,
-        totalAmount: shipment.totalFare || 0,
-        paidAmount: shipment.receivedFare || 0,
-        notes: shipment.notes || '',
-        createdBy: req.user._id
-      };
-      try {
-        await Customer.create(customerData);
-      } catch (err) {
-        console.error('Error auto-creating customer:', err.message);
+        phone: shipment.receiverPhone 
+      });
+
+      if (!customer) {
+        // Create new customer
+        const customerData = {
+          name: shipment.receiverName,
+          phone: shipment.receiverPhone,
+          address: shipment.receiverAddress,
+          bilties: [{
+            biltyNumber: shipment.biltyNumber,
+            amount_to_be_paid: shipment.remainingFare || 0,
+            payment_status: shipment.paymentStatus === 'paid' ? 'paid' : 'unpaid',
+            paid_by_customer: shipment.paymentStatus === 'paid' ? (shipment.remainingFare || 0) : 0
+          }],
+          createdBy: req.user._id
+        };
+        customer = new Customer(customerData);
+        await customer.save();
+      } else {
+        // Check if bilty already exists for this customer
+        const existingBilty = customer.bilties.find(b => b.biltyNumber === shipment.biltyNumber);
+        if (!existingBilty) {
+          // Add bilty to existing customer
+          customer.bilties.push({
+            biltyNumber: shipment.biltyNumber,
+            amount_to_be_paid: shipment.remainingFare || 0,
+            payment_status: shipment.paymentStatus === 'paid' ? 'paid' : 'unpaid',
+            paid_by_customer: shipment.paymentStatus === 'paid' ? (shipment.remainingFare || 0) : 0
+          });
+          await customer.save();
+        }
       }
+    } catch (err) {
+      console.error('Error auto-creating/updating customer:', err.message);
     }
-    // --- End auto-create customer ---
+    // --- End auto-create/update customer ---
 
     res.status(201).json({
       success: true,
       message: 'Shipment created successfully',
-      data: shipment
+      data: shipmentObj
     });
 
   } catch (error) {
@@ -99,9 +122,17 @@ export const getShipments = async (req, res) => {
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });
 
+    // Transform _id to id for frontend compatibility
+    const transformedShipments = shipments.map(shipment => {
+      const shipmentObj = shipment.toObject();
+      shipmentObj.id = shipmentObj._id;
+      delete shipmentObj._id;
+      return shipmentObj;
+    });
+
     res.status(200).json({
       success: true,
-      data: shipments
+      data: transformedShipments
     });
 
   } catch (error) {
@@ -127,9 +158,14 @@ export const getShipmentById = async (req, res) => {
       });
     }
 
+    // Transform _id to id for frontend compatibility
+    const shipmentObj = shipment.toObject();
+    shipmentObj.id = shipmentObj._id;
+    delete shipmentObj._id;
+
     res.status(200).json({
       success: true,
-      data: shipment
+      data: shipmentObj
     });
 
   } catch (error) {
@@ -146,19 +182,37 @@ export const getShipmentById = async (req, res) => {
 export const updateShipment = async (req, res) => {
   try {
     const { id } = req.params;
-    const shipment = await Shipment.findByIdAndUpdate(id, req.body, { new: true });
+    const updateData = { ...req.body };
 
-    if (!shipment) {
+    // If payment status is being updated to paid, set paid_by_customer
+    if (updateData.paymentStatus === 'paid') {
+      const shipment = await Shipment.findById(id);
+      if (shipment) {
+        // Calculate the amount that was remaining before marking as paid
+        const remainingAmount = shipment.totalCharges - (shipment.receivedFare || 0);
+        updateData.paid_by_customer = remainingAmount;
+        updateData.remainingFare = 0; // Ensure remainingFare is set to 0
+      }
+    }
+
+    const updatedShipment = await Shipment.findByIdAndUpdate(id, updateData, { new: true });
+
+    if (!updatedShipment) {
       return res.status(404).json({
         success: false,
         message: 'Shipment not found'
       });
     }
 
+    // Transform _id to id for frontend compatibility
+    const shipmentObj = updatedShipment.toObject();
+    shipmentObj.id = shipmentObj._id;
+    delete shipmentObj._id;
+
     res.status(200).json({
       success: true,
       message: 'Shipment updated successfully',
-      data: shipment
+      data: shipmentObj
     });
 
   } catch (error) {

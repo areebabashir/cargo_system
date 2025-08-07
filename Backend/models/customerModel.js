@@ -1,69 +1,49 @@
 import mongoose from 'mongoose';
 
+const biltySchema = new mongoose.Schema({
+  biltyNumber: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  amount_to_be_paid: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
+  payment_status: {
+    type: String,
+    enum: ['paid', 'unpaid'],
+    default: 'unpaid',
+  },
+  paid_by_customer: {
+    type: Number,
+    default: 0,
+  }
+}, { _id: false });
+
 const customerSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
     trim: true,
   },
-  biltyNumber: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-  },
-  date: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
-  quantity: {
-    type: Number,
-    required: true,
-    min: 1,
-    default: 1,
-  },
-  paymentStatus: {
-    type: String,
-    required: true,
-    enum: ['cash', 'online', 'cod'],
-    default: 'cash',
-  },
-  deliveryType: {
-    type: String,
-    required: true,
-    enum: ['self_pickup', 'delivery_by_distributor'],
-    default: 'delivery_by_distributor',
-  },
-  // Additional fields for better customer management
-  phone: {
-    type: String,
-    trim: true,
+  bilties: {
+    type: [biltySchema],
+    default: [],
   },
   address: {
     type: String,
     trim: true,
   },
-  totalAmount: {
-    type: Number,
-    default: 0,
-  },
-  paidAmount: {
-    type: Number,
-    default: 0,
-  },
-  remainingAmount: {
-    type: Number,
-    default: 0,
+  phone: {
+    type: String,
+    trim: true,
   },
   status: {
     type: String,
-    enum: ['active', 'completed', 'cancelled'],
+    enum: ['active', 'inactive'],
     default: 'active',
-  },
-  notes: {
-    type: String,
-    trim: true,
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -76,37 +56,44 @@ const customerSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
+// Virtual for total amount due (calculated from bilties)
+customerSchema.virtual('totalAmountDue').get(function() {
+  return this.bilties.reduce((total, bilty) => {
+    return total + (bilty.payment_status === 'unpaid' ? bilty.amount_to_be_paid : 0);
+  }, 0);
+});
+
 // Virtual for payment completion status
 customerSchema.virtual('isFullyPaid').get(function() {
-  return this.remainingAmount <= 0;
+  return this.totalAmountDue <= 0;
 });
 
 // Virtual for payment completion percentage
 customerSchema.virtual('paymentPercentage').get(function() {
-  if (this.totalAmount === 0) return 0;
-  return Math.round((this.paidAmount / this.totalAmount) * 100);
+  const totalAmount = this.bilties.reduce((total, bilty) => total + bilty.amount_to_be_paid, 0);
+  if (totalAmount === 0) return 100;
+  const paidAmount = totalAmount - this.totalAmountDue;
+  return Math.round((paidAmount / totalAmount) * 100);
 });
 
-// Pre-save middleware to calculate remaining amount
+// Pre-save middleware to ensure data consistency
 customerSchema.pre('save', function(next) {
-  // Calculate remaining amount
-  this.remainingAmount = this.totalAmount - this.paidAmount;
+  // Ensure bilty numbers are unique within the customer
+  const biltyNumbers = this.bilties.map(b => b.biltyNumber);
+  const uniqueBiltyNumbers = [...new Set(biltyNumbers)];
   
-  // Ensure remaining amount is not negative
-  if (this.remainingAmount < 0) {
-    this.remainingAmount = 0;
+  if (biltyNumbers.length !== uniqueBiltyNumbers.length) {
+    return next(new Error('Duplicate bilty numbers are not allowed'));
   }
   
   next();
 });
 
 // Index for faster queries
-customerSchema.index({ biltyNumber: 1 });
 customerSchema.index({ name: 1 });
-customerSchema.index({ date: -1 });
-customerSchema.index({ paymentStatus: 1 });
-customerSchema.index({ deliveryType: 1 });
+customerSchema.index({ phone: 1 });
 customerSchema.index({ status: 1 });
 customerSchema.index({ createdBy: 1 });
+customerSchema.index({ 'bilties.biltyNumber': 1 });
 
 export default mongoose.model('Customer', customerSchema);

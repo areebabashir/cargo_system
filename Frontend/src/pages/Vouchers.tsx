@@ -24,6 +24,7 @@ interface BiltyForVoucher {
   remainingFare: number;
   receivedFare: number;
   totalCharges: number;
+  paymentStatus: string;
   selected?: boolean;
 }
 
@@ -120,16 +121,17 @@ export default function Vouchers() {
       const response = await shipmentService.getShipments();
       console.log('Raw shipment data:', response.data); // Debug log
       const bilties = (response.data || []).map((shipment: any) => {
-        console.log('Processing shipment:', shipment.biltyNumber, 'totalFare:', shipment.totalFare, 'remainingFare:', shipment.remainingFare); // Debug log
+        console.log('Processing shipment:', shipment.biltyNumber, 'paymentStatus:', shipment.paymentStatus, 'remainingFare:', shipment.remainingFare); // Debug log
         return {
-          id: shipment._id,
+          id: shipment.id || shipment._id,
           biltyNumber: shipment.biltyNumber,
           senderName: shipment.senderName,
           receiverName: shipment.receiverName,
           totalFare: shipment.totalFare || 0,
           remainingFare: shipment.remainingFare || 0, // Unpaid amount
           receivedFare: shipment.receivedFare || 0,
-          totalCharges: shipment.totalCharges || 0
+          totalCharges: shipment.totalCharges || 0,
+          paymentStatus: shipment.paymentStatus || 'unpaid'
         };
       });
       console.log('Processed bilties:', bilties); // Debug log
@@ -415,12 +417,24 @@ export default function Vouchers() {
                 </div>
                 {/* Bilty Checkboxes */}
                 <div className="space-y-2 max-h-64 overflow-y-auto border rounded p-2 bg-gray-50">
-                  {availableBilties.filter(bilty => showOnlyUnpaid ? bilty.remainingFare > 0 : true).length === 0 ? (
+                  {availableBilties.filter(bilty => {
+                    if (showOnlyUnpaid) {
+                      // Show only bilties that are unpaid (paymentStatus !== 'paid' AND remainingFare > 0)
+                      return bilty.paymentStatus !== 'paid' && bilty.remainingFare > 0;
+                    }
+                    return true; // Show all bilties if filter is off
+                  }).length === 0 ? (
                     <div className="p-2 text-center text-gray-500">
-                      {language === 'ur' ? 'کوئی بلٹی دستیاب نہیں' : showOnlyUnpaid ? 'No bilties with unpaid amounts' : 'No bilties available'}
+                      {language === 'ur' ? 'کوئی بلٹی دستیاب نہیں' : showOnlyUnpaid ? 'No unpaid bilties available' : 'No bilties available'}
                     </div>
                   ) : (
-                    availableBilties.filter(bilty => showOnlyUnpaid ? bilty.remainingFare > 0 : true).map((bilty) => (
+                    availableBilties.filter(bilty => {
+                      if (showOnlyUnpaid) {
+                        // Show only bilties that are unpaid (paymentStatus !== 'paid' AND remainingFare > 0)
+                        return bilty.paymentStatus !== 'paid' && bilty.remainingFare > 0;
+                      }
+                      return true; // Show all bilties if filter is off
+                    }).map((bilty) => (
                       <div key={bilty.id} className="flex items-center gap-2 border-b last:border-b-0 py-1">
                         <input
                           type="checkbox"
@@ -441,9 +455,11 @@ export default function Vouchers() {
                             </span>
                           </div>
                           <div className="flex flex-col items-end">
-                            <span className={`font-bold ${bilty.remainingFare > 0 ? 'text-red-600' : 'text-green-600'}`}>Unpaid: PKR {bilty.remainingFare.toLocaleString()}</span>
-                            {bilty.remainingFare === 0 && <span className="text-xs text-green-500">(Fully Paid)</span>}
-                            {bilty.remainingFare < 0 && <span className="text-xs text-blue-500">(Overpaid)</span>}
+                            <span className={`font-bold ${bilty.paymentStatus === 'paid' ? 'text-green-600' : 'text-red-600'}`}>
+                              {bilty.paymentStatus === 'paid' ? 'PAID' : 'UNPAID'}: PKR {bilty.remainingFare.toLocaleString()}
+                            </span>
+                            {bilty.paymentStatus === 'paid' && <span className="text-xs text-green-500">(Fully Paid)</span>}
+                            {bilty.paymentStatus !== 'paid' && bilty.remainingFare === 0 && <span className="text-xs text-blue-500">(No Balance)</span>}
                           </div>
                         </label>
                       </div>
