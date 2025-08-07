@@ -415,7 +415,7 @@ export default function ShopManagement() {
         <div className="flex space-x-2">
           <Dialog open={isShopFormOpen} onOpenChange={setIsShopFormOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-primary hover:bg-primary-hover text-white">
+              <Button className="bg-gradient-primary  text-white">
                 <Plus className="w-4 h-4 mr-2" />
                 {language === 'ur' ? 'نیا شاپ' : 'New Shop'}
               </Button>
@@ -508,10 +508,10 @@ export default function ShopManagement() {
                   </div>
                 </div>
                 <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setIsShopFormOpen(false)}>
+                  <Button type="button" onClick={() => setIsShopFormOpen(false)}>
                     {language === 'ur' ? 'منسوخ کریں' : 'Cancel'}
                   </Button>
-                  <Button type="submit" className="bg-gradient-primary hover:bg-primary-hover text-white" disabled={loading}>
+                  <Button type="submit" className="bg-gradient-primary  text-white" disabled={loading}>
                     {loading ? (language === 'ur' ? 'محفوظ کر رہا ہے...' : 'Saving...') : (selectedShop ? (language === 'ur' ? 'اپڈیٹ کریں' : 'Update') : (language === 'ur' ? 'شاپ شامل کریں' : 'Add Shop'))}
                   </Button>
                 </div>
@@ -541,7 +541,7 @@ export default function ShopManagement() {
                 className="pl-10"
               />
             </div>
-            <Button variant="outline">
+            <Button>
               <Filter className="w-4 h-4 mr-2" />
               {language === 'ur' ? 'فلٹر' : 'Filter'}
             </Button>
@@ -1107,7 +1107,7 @@ export default function ShopManagement() {
               <Button type="button" variant="outline" onClick={() => setIsRentPaymentFormOpen(false)}>
                 {language === 'ur' ? 'منسوخ کریں' : 'Cancel'}
               </Button>
-              <Button type="submit" className="bg-gradient-primary hover:bg-primary-hover text-white" disabled={loading}>
+              <Button type="submit" className="bg-gradient-primary  text-white" disabled={loading}>
                 {loading ? (language === 'ur' ? 'محفوظ کر رہا ہے...' : 'Saving...') : (editingPayment ? (language === 'ur' ? 'اپڈیٹ کریں' : 'Update') : (language === 'ur' ? 'شامل کریں' : 'Add'))}
               </Button>
             </div>

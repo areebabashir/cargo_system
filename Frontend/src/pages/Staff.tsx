@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Edit, Trash2, User, Phone, MapPin, Package, DollarSign, Calendar, Building, Mail } from "lucide-react";
+import { Plus, Search, Edit, Trash2, User, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,230 +10,168 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { toast } from "sonner";
+import axios from "axios";
 
-interface CustomerData {
-  id: string;
+interface StaffData {
+  _id: string;
   name: string;
+  designation: string;
+  wage: number;
   phone: string;
-  email: string;
   address: string;
-  city: string;
-  customerType: 'sender' | 'receiver' | 'both';
-  totalBiltyCount: number;
-  totalAmount: number;
-  outstandingBalance: number;
-  paymentMethod: 'cash' | 'online' | 'cod';
-  registrationDate: string;
-  lastTransactionDate: string;
+  image?: string;
   status: 'active' | 'inactive';
-  notes: string;
+  joinDate: string;
 }
 
-interface BiltyHistory {
-  id: string;
-  biltyNumber: string;
-  customerId: string;
-  customerName: string;
-  date: string;
-  quantity: number;
-  amount: number;
-  paymentStatus: 'paid' | 'unpaid';
-  deliveryStatus: 'delivered' | 'pending' | 'returned';
-  pickupType: 'self' | 'delivery';
-}
-
-export default function Staff() {
+export default function StaffManagement() {
   const { t, language } = useLanguage();
-  const [customers, setCustomers] = useState<CustomerData[]>([]);
-  const [biltyHistory, setBiltyHistory] = useState<BiltyHistory[]>([]);
-  const [isCustomerFormOpen, setIsCustomerFormOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerData | null>(null);
+  const [staffMembers, setStaffMembers] = useState<StaffData[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [currentStaff, setCurrentStaff] = useState<StaffData | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [activeTab, setActiveTab] = useState<'customers' | 'history'>('customers');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Customer form state
-  const [customerForm, setCustomerForm] = useState<Partial<CustomerData>>({
+  // Form state
+  const [formData, setFormData] = useState<Omit<StaffData, '_id' | 'joinDate'>>({
     name: "",
+    designation: "",
+    wage: 0,
     phone: "",
-    email: "",
     address: "",
-    city: "",
-    customerType: "both",
-    paymentMethod: "cash",
-    status: "active",
-    notes: ""
+    status: "active"
   });
 
-  // Sample data
+  // API configuration
+  const API_URL = "http://localhost:8000/api/staff";
+  const axiosInstance = axios.create({
+    baseURL: API_URL,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("token")}`
+    }
+  });
+
+  // Fetch staff data
+  const fetchStaff = async () => {
+    try {
+      setIsLoading(true);
+      const response = await axiosInstance.get("/");
+      setStaffMembers(response.data);
+    } catch (error) {
+      toast.error(language === 'ur' ? 'ڈیٹا لوڈ کرنے میں ناکام' : 'Failed to load data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const sampleCustomers: CustomerData[] = [
-      {
-        id: "1",
-        name: "Ahmed Khan",
-        phone: "0300-1234567",
-        email: "ahmed.khan@email.com",
-        address: "House #123, Street 5, Gulberg III",
-        city: "Lahore",
-        customerType: "both",
-        totalBiltyCount: 25,
-        totalAmount: 75000,
-        outstandingBalance: 5000,
-        paymentMethod: "cash",
-        registrationDate: "2023-01-15",
-        lastTransactionDate: "2024-01-15",
-        status: "active",
-        notes: "Regular customer, prefers self pickup"
-      },
-      {
-        id: "2",
-        name: "Fatima Ali",
-        phone: "0312-9876543",
-        email: "fatima.ali@email.com",
-        address: "Flat #45, Building 2, Clifton",
-        city: "Karachi",
-        customerType: "sender",
-        totalBiltyCount: 12,
-        totalAmount: 45000,
-        outstandingBalance: 0,
-        paymentMethod: "online",
-        registrationDate: "2023-03-20",
-        lastTransactionDate: "2024-01-10",
-        status: "active",
-        notes: "Online payment preferred"
-      },
-      {
-        id: "3",
-        name: "Muhammad Hassan",
-        phone: "0333-5555555",
-        email: "m.hassan@email.com",
-        address: "Shop #12, Blue Area",
-        city: "Islamabad",
-        customerType: "receiver",
-        totalBiltyCount: 8,
-        totalAmount: 28000,
-        outstandingBalance: 3000,
-        paymentMethod: "cod",
-        registrationDate: "2023-06-10",
-        lastTransactionDate: "2024-01-12",
-        status: "active",
-        notes: "COD customer, delivery required"
-      }
-    ];
-
-    const sampleBiltyHistory: BiltyHistory[] = [
-      {
-        id: "1",
-        biltyNumber: "BLT-2024-001",
-        customerId: "1",
-        customerName: "Ahmed Khan",
-        date: "2024-01-15",
-        quantity: 2,
-        amount: 5000,
-        paymentStatus: "paid",
-        deliveryStatus: "delivered",
-        pickupType: "self"
-      },
-      {
-        id: "2",
-        biltyNumber: "BLT-2024-002",
-        customerId: "2",
-        customerName: "Fatima Ali",
-        date: "2024-01-16",
-        quantity: 1,
-        amount: 3500,
-        paymentStatus: "paid",
-        deliveryStatus: "pending",
-        pickupType: "delivery"
-      },
-      {
-        id: "3",
-        biltyNumber: "BLT-2024-003",
-        customerId: "3",
-        customerName: "Muhammad Hassan",
-        date: "2024-01-17",
-        quantity: 3,
-        amount: 7500,
-        paymentStatus: "unpaid",
-        deliveryStatus: "pending",
-        pickupType: "delivery"
-      }
-    ];
-
-    setCustomers(sampleCustomers);
-    setBiltyHistory(sampleBiltyHistory);
+    fetchStaff();
   }, []);
 
-  const handleCustomerSubmit = (e: React.FormEvent) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+    }
+  };
+
+  const handleOpenDialog = (staff: StaffData | null = null) => {
+    if (staff) {
+      setCurrentStaff(staff);
+      setFormData({
+        name: staff.name,
+        designation: staff.designation,
+        wage: staff.wage,
+        phone: staff.phone,
+        address: staff.address,
+        status: staff.status
+      });
+    } else {
+      setCurrentStaff(null);
+      setFormData({
+        name: "",
+        designation: "",
+        wage: 0,
+        phone: "",
+        address: "",
+        status: "active"
+      });
+    }
+    setIsDialogOpen(true);
+    setImageFile(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newCustomer: CustomerData = {
-      id: Date.now().toString(),
-      totalBiltyCount: 0,
-      totalAmount: 0,
-      outstandingBalance: 0,
-      registrationDate: new Date().toISOString().split('T')[0],
-      lastTransactionDate: new Date().toISOString().split('T')[0],
-      ...customerForm
-    } as CustomerData;
+    
+    try {
+      setIsLoading(true);
+      const formDataToSend = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        formDataToSend.append(key, value.toString());
+      });
+      
+      if (imageFile) {
+        formDataToSend.append('image', imageFile);
+      }
 
-    setCustomers([...customers, newCustomer]);
-    setCustomerForm({
-      name: "",
-      phone: "",
-      email: "",
-      address: "",
-      city: "",
-      customerType: "both",
-      paymentMethod: "cash",
-      status: "active",
-      notes: ""
-    });
-    setIsCustomerFormOpen(false);
-  };
+      let response;
+      if (currentStaff) {
+        // Update staff
+        response = await axiosInstance.put(`/${currentStaff._id}`, formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        toast.success(language === 'ur' ? 'عملہ کامیابی سے اپ ڈیٹ ہو گیا' : 'Staff updated successfully');
+      } else {
+        // Create new staff
+        response = await axiosInstance.post("/", formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        toast.success(language === 'ur' ? 'عملہ کامیابی سے شامل ہو گیا' : 'Staff added successfully');
+      }
 
-  const handleViewCustomer = (customer: CustomerData) => {
-    setSelectedCustomer(customer);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-gray-100 text-gray-800';
-      case 'paid': return 'bg-green-100 text-green-800';
-      case 'unpaid': return 'bg-red-100 text-red-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'returned': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      fetchStaff(); // Refresh the list
+      setIsDialogOpen(false);
+    } catch (error) {
+      toast.error(language === 'ur' ? 'خرابی پیدا ہوئی' : 'An error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const getCustomerTypeColor = (type: string) => {
-    switch (type) {
-      case 'sender': return 'bg-blue-100 text-blue-800';
-      case 'receiver': return 'bg-purple-100 text-purple-800';
-      case 'both': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const handleDelete = async (id: string) => {
+    try {
+      setIsLoading(true);
+      await axiosInstance.delete(`/${id}`);
+      toast.success(language === 'ur' ? 'عملہ کامیابی سے حذف ہو گیا' : 'Staff deleted successfully');
+      fetchStaff(); // Refresh the list
+    } catch (error) {
+      toast.error(language === 'ur' ? 'خرابی پیدا ہوئی' : 'An error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const filteredCustomers = customers.filter(customer => {
-    const matchesSearch = 
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.city.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = filterType === "all" || customer.customerType === filterType;
-    const matchesStatus = filterStatus === "all" || customer.status === filterStatus;
-    
-    return matchesSearch && matchesType && matchesStatus;
-  });
-
-  const customerBiltyHistory = selectedCustomer 
-    ? biltyHistory.filter(bilty => bilty.customerId === selectedCustomer.id)
-    : [];
+  const filteredStaff = staffMembers.filter(staff =>
+    staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    staff.designation.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    staff.phone.includes(searchTerm)
+  );
 
   return (
     <div className="space-y-6">
@@ -241,257 +179,83 @@ export default function Staff() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            {language === 'ur' ? 'کسٹمر اور وصول کنندہ مینجمنٹ' : 'Customer & Receiver Management'}
+            {language === 'ur' ? 'عملہ انتظام' : 'Staff Management'}
           </h1>
           <p className="text-gray-600 mt-1">
-            {language === 'ur' ? 'کسٹمرز اور وصول کنندگان کا انتظام' : 'Manage customers and receivers'}
+            {language === 'ur' ? 'اپنے عملہ کا انتظام کریں' : 'Manage your staff members'}
           </p>
         </div>
-        <Dialog open={isCustomerFormOpen} onOpenChange={setIsCustomerFormOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-primary hover:bg-primary-hover text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              {language === 'ur' ? 'نیا کسٹمر' : 'New Customer'}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {language === 'ur' ? 'نیا کسٹمر شامل کریں' : 'Add New Customer'}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCustomerSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">
-                    {language === 'ur' ? 'نام' : 'Name'}
-                  </Label>
-                  <Input
-                    id="name"
-                    value={customerForm.name}
-                    onChange={(e) => setCustomerForm({...customerForm, name: e.target.value})}
-                    placeholder={language === 'ur' ? 'نام درج کریں' : 'Enter name'}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="phone">
-                    {language === 'ur' ? 'فون نمبر' : 'Phone Number'}
-                  </Label>
-                  <Input
-                    id="phone"
-                    value={customerForm.phone}
-                    onChange={(e) => setCustomerForm({...customerForm, phone: e.target.value})}
-                    placeholder={language === 'ur' ? 'فون نمبر درج کریں' : 'Enter phone number'}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">
-                    {language === 'ur' ? 'ای میل' : 'Email'}
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={customerForm.email}
-                    onChange={(e) => setCustomerForm({...customerForm, email: e.target.value})}
-                    placeholder={language === 'ur' ? 'ای میل درج کریں' : 'Enter email'}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="city">
-                    {language === 'ur' ? 'شہر' : 'City'}
-                  </Label>
-                  <Input
-                    id="city"
-                    value={customerForm.city}
-                    onChange={(e) => setCustomerForm({...customerForm, city: e.target.value})}
-                    placeholder={language === 'ur' ? 'شہر درج کریں' : 'Enter city'}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="customerType">
-                    {language === 'ur' ? 'کسٹمر کی قسم' : 'Customer Type'}
-                  </Label>
-                  <Select
-                    value={customerForm.customerType}
-                    onValueChange={(value) => setCustomerForm({...customerForm, customerType: value as 'sender' | 'receiver' | 'both'})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sender">{language === 'ur' ? 'مرسل' : 'Sender'}</SelectItem>
-                      <SelectItem value="receiver">{language === 'ur' ? 'وصول کنندہ' : 'Receiver'}</SelectItem>
-                      <SelectItem value="both">{language === 'ur' ? 'دونوں' : 'Both'}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="paymentMethod">
-                    {language === 'ur' ? 'ادائیگی کا طریقہ' : 'Payment Method'}
-                  </Label>
-                  <Select
-                    value={customerForm.paymentMethod}
-                    onValueChange={(value) => setCustomerForm({...customerForm, paymentMethod: value as 'cash' | 'online' | 'cod'})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">{language === 'ur' ? 'نقد' : 'Cash'}</SelectItem>
-                      <SelectItem value="online">{language === 'ur' ? 'آن لائن' : 'Online'}</SelectItem>
-                      <SelectItem value="cod">{language === 'ur' ? 'کیش آن ڈیلیوری' : 'COD'}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="address">
-                  {language === 'ur' ? 'پتہ' : 'Address'}
-                </Label>
-                <Textarea
-                  id="address"
-                  value={customerForm.address}
-                  onChange={(e) => setCustomerForm({...customerForm, address: e.target.value})}
-                  placeholder={language === 'ur' ? 'پتہ درج کریں' : 'Enter address'}
-                />
-              </div>
-              <div>
-                <Label htmlFor="notes">
-                  {language === 'ur' ? 'نوٹس' : 'Notes'}
-                </Label>
-                <Textarea
-                  id="notes"
-                  value={customerForm.notes}
-                  onChange={(e) => setCustomerForm({...customerForm, notes: e.target.value})}
-                  placeholder={language === 'ur' ? 'نوٹس درج کریں' : 'Enter notes'}
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsCustomerFormOpen(false)}>
-                  {language === 'ur' ? 'منسوخ کریں' : 'Cancel'}
-                </Button>
-                <Button type="submit" className="bg-gradient-primary hover:bg-primary-hover text-white">
-                  {language === 'ur' ? 'کسٹمر شامل کریں' : 'Add Customer'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-        <Button
-          variant={activeTab === 'customers' ? 'default' : 'ghost'}
-          onClick={() => setActiveTab('customers')}
-          className="flex-1"
+        <Button 
+          onClick={() => handleOpenDialog()}
+          className="bg-gradient-primary  text-white"
+          disabled={isLoading}
         >
-          <User className="w-4 h-4 mr-2" />
-          {language === 'ur' ? 'کسٹمرز' : 'Customers'}
-        </Button>
-        <Button
-          variant={activeTab === 'history' ? 'default' : 'ghost'}
-          onClick={() => setActiveTab('history')}
-          className="flex-1"
-        >
-          <Package className="w-4 h-4 mr-2" />
-          {language === 'ur' ? 'بلٹی تاریخ' : 'Bilty History'}
+          <Plus className="w-4 h-4 mr-2" />
+          {language === 'ur' ? 'نیا عملہ' : 'New Staff'}
         </Button>
       </div>
 
-      {/* Search and Filters */}
+      {/* Search */}
       <Card>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder={language === 'ur' ? 'تلاش کریں...' : 'Search...'}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger>
-                <SelectValue placeholder={language === 'ur' ? 'کسٹمر کی قسم' : 'Customer Type'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{language === 'ur' ? 'سب' : 'All'}</SelectItem>
-                <SelectItem value="sender">{language === 'ur' ? 'مرسل' : 'Sender'}</SelectItem>
-                <SelectItem value="receiver">{language === 'ur' ? 'وصول کنندہ' : 'Receiver'}</SelectItem>
-                <SelectItem value="both">{language === 'ur' ? 'دونوں' : 'Both'}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder={language === 'ur' ? 'حیثیت' : 'Status'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{language === 'ur' ? 'سب' : 'All'}</SelectItem>
-                <SelectItem value="active">{language === 'ur' ? 'فعال' : 'Active'}</SelectItem>
-                <SelectItem value="inactive">{language === 'ur' ? 'غیر فعال' : 'Inactive'}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              {language === 'ur' ? 'فلٹر' : 'Filter'}
-            </Button>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder={language === 'ur' ? 'تلاش کریں...' : 'Search...'}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+              disabled={isLoading}
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Customers Tab */}
-      {activeTab === 'customers' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {language === 'ur' ? 'کسٹمرز کی فہرست' : 'Customer List'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      {/* Staff Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {language === 'ur' ? 'عملہ کی فہرست' : 'Staff List'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>{language === 'ur' ? 'نام' : 'Name'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'رابطہ' : 'Contact'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'شہر' : 'City'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'قسم' : 'Type'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'کل بلٹی' : 'Total Bilty'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'کل رقم' : 'Total Amount'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'بقایا' : 'Outstanding'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'عہدہ' : 'Designation'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'تنخواہ' : 'Wage'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'فون' : 'Phone'}</TableHead>
                   <TableHead>{language === 'ur' ? 'حیثیت' : 'Status'}</TableHead>
                   <TableHead>{language === 'ur' ? 'عمل' : 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCustomers.map((customer) => (
-                  <TableRow key={customer.id}>
-                    <TableCell className="font-medium">{customer.name}</TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{customer.phone}</div>
-                        <div className="text-sm text-gray-500">{customer.email}</div>
-                      </div>
+                {filteredStaff.map((staff) => (
+                  <TableRow key={staff._id}>
+                    <TableCell className="font-medium flex items-center">
+                      {staff.image && (
+                        <img 
+                          src={`http://localhost:8000/uploads/${staff.image}`} 
+                          alt={staff.name}
+                          className="w-10 h-10 rounded-full mr-3 object-cover"
+                        />
+                      )}
+                      {staff.name}
                     </TableCell>
-                    <TableCell>{customer.city}</TableCell>
+                    <TableCell>{staff.designation}</TableCell>
+                    <TableCell>₨{staff.wage.toLocaleString()}</TableCell>
+                    <TableCell>{staff.phone}</TableCell>
                     <TableCell>
-                      <Badge className={getCustomerTypeColor(customer.customerType)}>
+                      <Badge className={staff.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
                         {language === 'ur' 
-                          ? (customer.customerType === 'sender' ? 'مرسل' : 
-                             customer.customerType === 'receiver' ? 'وصول کنندہ' : 'دونوں')
-                          : customer.customerType
-                        }
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{customer.totalBiltyCount}</TableCell>
-                    <TableCell>₨{customer.totalAmount.toLocaleString()}</TableCell>
-                    <TableCell>₨{customer.outstandingBalance.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(customer.status)}>
-                        {language === 'ur' 
-                          ? (customer.status === 'active' ? 'فعال' : 'غیر فعال')
-                          : customer.status
+                          ? (staff.status === 'active' ? 'فعال' : 'غیر فعال')
+                          : staff.status
                         }
                       </Badge>
                     </TableCell>
@@ -500,11 +264,17 @@ export default function Staff() {
                         <Button 
                           size="sm" 
                           variant="ghost"
-                          onClick={() => handleViewCustomer(customer)}
+                          onClick={() => handleOpenDialog(staff)}
+                          disabled={isLoading}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button size="sm" variant="ghost">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleDelete(staff._id)}
+                          disabled={isLoading}
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -513,167 +283,172 @@ export default function Staff() {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Bilty History Tab */}
-      {activeTab === 'history' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {language === 'ur' ? 'بلٹی کی تاریخ' : 'Bilty History'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{language === 'ur' ? 'بلٹی نمبر' : 'Bilty No.'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'کسٹمر' : 'Customer'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'مقدار' : 'Quantity'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'رقم' : 'Amount'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'ادائیگی' : 'Payment'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'ترسیل' : 'Delivery'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'پک اپ' : 'Pickup'}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {biltyHistory.map((bilty) => (
-                  <TableRow key={bilty.id}>
-                    <TableCell className="font-medium">{bilty.biltyNumber}</TableCell>
-                    <TableCell>{bilty.customerName}</TableCell>
-                    <TableCell>{bilty.date}</TableCell>
-                    <TableCell>{bilty.quantity}</TableCell>
-                    <TableCell>₨{bilty.amount.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(bilty.paymentStatus)}>
-                        {language === 'ur' 
-                          ? (bilty.paymentStatus === 'paid' ? 'ادا شدہ' : 'غیر ادا شدہ')
-                          : bilty.paymentStatus
-                        }
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(bilty.deliveryStatus)}>
-                        {language === 'ur' 
-                          ? (bilty.deliveryStatus === 'delivered' ? 'پہنچا دیا گیا' : 
-                             bilty.deliveryStatus === 'pending' ? 'زیر التوا' : 'واپس')
-                          : bilty.deliveryStatus
-                        }
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {language === 'ur' 
-                          ? (bilty.pickupType === 'self' ? 'خود پک اپ' : 'ترسیل')
-                          : bilty.pickupType
-                        }
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Customer Details Dialog */}
-      {selectedCustomer && (
-        <Dialog open={!!selectedCustomer} onOpenChange={() => setSelectedCustomer(null)}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>
-                {language === 'ur' ? 'کسٹمر کی تفصیلات' : 'Customer Details'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold mb-3">
-                    {language === 'ur' ? 'بنیادی معلومات' : 'Basic Information'}
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">{language === 'ur' ? 'نام:' : 'Name:'}</span>
-                      <span className="font-medium">{selectedCustomer.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">{language === 'ur' ? 'فون:' : 'Phone:'}</span>
-                      <span>{selectedCustomer.phone}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">{language === 'ur' ? 'ای میل:' : 'Email:'}</span>
-                      <span>{selectedCustomer.email}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">{language === 'ur' ? 'شہر:' : 'City:'}</span>
-                      <span>{selectedCustomer.city}</span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-3">
-                    {language === 'ur' ? 'مالی تفصیلات' : 'Financial Details'}
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">{language === 'ur' ? 'کل بلٹی:' : 'Total Bilty:'}</span>
-                      <span>{selectedCustomer.totalBiltyCount}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">{language === 'ur' ? 'کل رقم:' : 'Total Amount:'}</span>
-                      <span>₨{selectedCustomer.totalAmount.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">{language === 'ur' ? 'بقایا:' : 'Outstanding:'}</span>
-                      <span className="font-bold">₨{selectedCustomer.outstandingBalance.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
+      {/* Add/Edit Staff Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {currentStaff 
+                ? (language === 'ur' ? 'عملہ کو اپ ڈیٹ کریں' : 'Update Staff')
+                : (language === 'ur' ? 'نیا عملہ شامل کریں' : 'Add New Staff')
+              }
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h3 className="font-semibold mb-3">
-                  {language === 'ur' ? 'بلٹی کی تاریخ' : 'Bilty History'}
-                </h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{language === 'ur' ? 'بلٹی نمبر' : 'Bilty No.'}</TableHead>
-                      <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
-                      <TableHead>{language === 'ur' ? 'مقدار' : 'Quantity'}</TableHead>
-                      <TableHead>{language === 'ur' ? 'رقم' : 'Amount'}</TableHead>
-                      <TableHead>{language === 'ur' ? 'حیثیت' : 'Status'}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {customerBiltyHistory.map((bilty) => (
-                      <TableRow key={bilty.id}>
-                        <TableCell className="font-medium">{bilty.biltyNumber}</TableCell>
-                        <TableCell>{bilty.date}</TableCell>
-                        <TableCell>{bilty.quantity}</TableCell>
-                        <TableCell>₨{bilty.amount.toLocaleString()}</TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(bilty.deliveryStatus)}>
-                            {language === 'ur' 
-                              ? (bilty.deliveryStatus === 'delivered' ? 'پہنچا دیا گیا' : 
-                                 bilty.deliveryStatus === 'pending' ? 'زیر التوا' : 'واپس')
-                              : bilty.deliveryStatus
-                            }
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <Label htmlFor="name">
+                  {language === 'ur' ? 'نام' : 'Name'} *
+                </Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <Label htmlFor="designation">
+                  {language === 'ur' ? 'عہدہ' : 'Designation'} *
+                </Label>
+                <Input
+                  id="designation"
+                  name="designation"
+                  value={formData.designation}
+                  onChange={handleInputChange}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <Label htmlFor="wage">
+                  {language === 'ur' ? 'تنخواہ' : 'Wage'} *
+                </Label>
+                <Input
+                  id="wage"
+                  name="wage"
+                  type="number"
+                  value={formData.wage}
+                  onChange={handleInputChange}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone">
+                  {language === 'ur' ? 'فون نمبر' : 'Phone Number'} *
+                </Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <Label htmlFor="status">
+                  {language === 'ur' ? 'حیثیت' : 'Status'} *
+                </Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => handleSelectChange('status', value)}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">{language === 'ur' ? 'فعال' : 'Active'}</SelectItem>
+                    <SelectItem value="inactive">{language === 'ur' ? 'غیر فعال' : 'Inactive'}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="image">
+                  {language === 'ur' ? 'تصویر' : 'Image'}
+                </Label>
+                <div className="flex items-center gap-4">
+                  <Label
+                    htmlFor="image-upload"
+                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
+                  >
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="w-8 h-8 mb-3 text-gray-400" />
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">{language === 'ur' ? 'تصویر اپ لوڈ کریں' : 'Upload image'}</span>
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {language === 'ur' ? 'PNG, JPG, JPEG' : 'PNG, JPG, JPEG'}
+                      </p>
+                    </div>
+                    <Input
+                      id="image-upload"
+                      type="file"
+                      className="hidden"
+                      onChange={handleFileChange}
+                      accept="image/*"
+                      disabled={isLoading}
+                    />
+                  </Label>
+                </div>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+            <div>
+              <Label htmlFor="address">
+                {language === 'ur' ? 'پتہ' : 'Address'} *
+              </Label>
+              <Textarea
+                id="address"
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                required
+                disabled={isLoading}
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+                disabled={isLoading}
+              >
+                {language === 'ur' ? 'منسوخ کریں' : 'Cancel'}
+              </Button>
+              <Button
+                type="submit"
+                className="bg-gradient-primary  text-white"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {currentStaff 
+                      ? (language === 'ur' ? 'اپ ڈیٹ ہو رہا ہے...' : 'Updating...')
+                      : (language === 'ur' ? 'شامل ہو رہا ہے...' : 'Adding...')
+                    }
+                  </span>
+                ) : (
+                  currentStaff 
+                    ? (language === 'ur' ? 'اپ ڈیٹ کریں' : 'Update')
+                    : (language === 'ur' ? 'شامل کریں' : 'Add')
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -32,13 +32,7 @@ export function TopBar() {
       <div className={`flex items-center ${isRTL ? 'space-x-reverse space-x-4' : 'space-x-4'}`}>
         <SidebarTrigger className="text-gray-600 hover:bg-gray-100" />
         
-        <div className="relative max-w-md w-full">
-          <Search className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400`} />
-          <Input
-            placeholder={t("searchPlaceholder")}
-            className={`${isRTL ? 'pr-10' : 'pl-10'} bg-gray-50 border-gray-200 focus:bg-white focus:border-primary`}
-          />
-        </div>
+        
       </div>
 
       <div className={`flex items-center ${isRTL ? 'space-x-reverse space-x-4' : 'space-x-4'}`}>
@@ -46,16 +40,7 @@ export function TopBar() {
         <LanguageSwitcher variant="compact" />
 
         {/* Notifications */}
-        <Button variant="ghost" size="sm" className="relative text-gray-600 hover:bg-gray-100">
-          <Bell className="w-5 h-5" />
-          <Badge 
-            variant="destructive" 
-            className={`absolute -top-1 ${isRTL ? '-left-1' : '-right-1'} w-5 h-5 rounded-full p-0 flex items-center justify-center text-xs`}
-          >
-            3
-          </Badge>
-        </Button>
-
+        
         {/* User Profile Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -76,15 +61,8 @@ export function TopBar() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>{t("myAccount")}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className={`${isRTL ? 'ml-2' : 'mr-2'} h-4 w-4`} />
-              <span>{t("profile")}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <SettingsIcon className={`${isRTL ? 'ml-2' : 'mr-2'} h-4 w-4`} />
-              <span>{t("settings")}</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            
+            
             <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
               <LogOut className={`${isRTL ? 'ml-2' : 'mr-2'} h-4 w-4`} />
               <span>{t("logout")}</span>

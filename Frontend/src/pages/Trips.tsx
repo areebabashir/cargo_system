@@ -299,7 +299,7 @@ export default function Trips() {
                   <Button type="button" variant="outline" onClick={() => setIsVehicleFormOpen(false)}>
                     {language === 'ur' ? 'منسوخ کریں' : 'Cancel'}
                   </Button>
-                  <Button type="submit" className="bg-gradient-primary hover:bg-primary-hover text-white">
+                  <Button type="submit" className="bg-gradient-primary text-white">
                     {language === 'ur' ? 'گاڑی شامل کریں' : 'Add Vehicle'}
                   </Button>
                 </div>
@@ -309,7 +309,7 @@ export default function Trips() {
 
           <Dialog open={isTripFormOpen} onOpenChange={setIsTripFormOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-primary hover:bg-primary-hover text-white">
+              <Button className="bg-gradient-primary  text-white">
                 <Plus className="w-4 h-4 mr-2" />
                 {language === 'ur' ? 'نیا ٹرپ' : 'New Trip'}
               </Button>
@@ -406,7 +406,7 @@ export default function Trips() {
                   <Button type="button" variant="outline" onClick={() => setIsTripFormOpen(false)}>
                     {language === 'ur' ? 'منسوخ کریں' : 'Cancel'}
                   </Button>
-                  <Button type="submit" className="bg-gradient-primary hover:bg-primary-hover text-white">
+                  <Button type="submit" className="bg-gradient-primary  text-white">
                     {language === 'ur' ? 'ٹرپ شامل کریں' : 'Add Trip'}
                   </Button>
                 </div>
@@ -440,7 +440,7 @@ export default function Trips() {
                     <Input id="driverAddress" value={driverForm.address} onChange={e => setDriverForm({ ...driverForm, address: e.target.value })} required />
                   </div>
                 </div>
-                <Button type="submit" className="w-full bg-gradient-primary hover:bg-primary-hover text-white">
+                <Button type="submit" className="w-full bg-gradient-primary  text-white">
                   {language === 'ur' ? 'محفوظ کریں' : 'Save'}
                 </Button>
               </form>
@@ -611,7 +611,7 @@ export default function Trips() {
                       <Input id="driverAddress" value={driverForm.address} onChange={e => setDriverForm({ ...driverForm, address: e.target.value })} required />
                     </div>
                   </div>
-                  <Button type="submit" className="w-full bg-gradient-primary hover:bg-primary-hover text-white">
+                  <Button type="submit" className="w-full bg-gradient-primary text-white">
                     {language === 'ur' ? 'محفوظ کریں' : 'Save'}
                   </Button>
                 </form>

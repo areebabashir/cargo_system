@@ -13,7 +13,6 @@ import Vouchers from "./pages/Vouchers";
 import Staff from "./pages/Staff";
 import Trips from "./pages/Trips";
 import ShopManagement from "./pages/ShopManagement";
-import Reports from "./pages/Reports";
 import Claims from "./pages/Claims";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
@@ -84,13 +83,7 @@ const App = () => (
                 </DashboardLayout>
               </ProtectedRoute>
             } />
-            <Route path="/reports" element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <Reports />
-                </DashboardLayout>
-              </ProtectedRoute>
-            } />
+           
             <Route path="/claims" element={
               <ProtectedRoute>
                 <DashboardLayout>

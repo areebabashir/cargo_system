@@ -66,20 +66,17 @@ const navigationItems = [
     icon: Truck,
   },
   {
+    title: { en: "Claims", ur: "دعوے" },
+    url: "/claims",
+    icon: AlertTriangle,
+  }, 
+  {
     title: { en: "Shop Management", ur: "شاپ مینجمنٹ" },
     url: "/shop-management",
     icon: Building,
   },
-  {
-    title: { en: "Reports", ur: "رپورٹس" },
-    url: "/reports",
-    icon: FileText,
-  },
-  {
-    title: { en: "Claims", ur: "دعوے" },
-    url: "/claims",
-    icon: AlertTriangle,
-  },
+
+ 
 ];
 
 export function AppSidebar() {
@@ -136,20 +133,7 @@ export function AppSidebar() {
           </div>
         </div>
 
-        {/* Language Toggle */}
-        {!isCollapsed && (
-          <div className="p-4 border-b border-sidebar-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLanguage(language === 'en' ? 'ur' : 'en')}
-              className="w-full justify-start text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent"
-            >
-              <Globe className={`w-4 h-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-              {language === 'en' ? 'اردو' : 'English'}
-            </Button>
-          </div>
-        )}
+    
 
         <SidebarGroup className="px-2 py-4">
           <SidebarGroupContent>

@@ -43,7 +43,7 @@
   /* Gradients */
   --gradient-card: 0 0% 100%;
   --gradient-primary: 221.2 83.2% 53.3%;
-  --gradient-primary-hover: 221.2 83.2% 45%;
+  --gradient-primary-hover: 221.2 83.2% 53.3%;
 }
 
 .dark {
