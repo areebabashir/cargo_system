@@ -125,6 +125,10 @@ const shipmentSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  voucher_made: {
+    type: Boolean,
+    default: false,
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

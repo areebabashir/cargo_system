@@ -60,6 +60,10 @@ const voucherSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  trip_made: {
+    type: Boolean,
+    default: false,
+  },
   notes: {
     type: String,
   },

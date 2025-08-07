@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Truck, User, Phone, Calendar, MapPin, DollarSign, Clock } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Truck, User, Phone, Calendar, MapPin, DollarSign, Clock, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { getAllVehicles, createVehicle, deleteVehicle } from '../services/vehicleService';
 import { getAllDrivers, createDriver, deleteDriver } from '../services/driverService';
 import { getAllTrips, createTrip, deleteTrip } from '../services/tripService';
+import { voucherService } from "@/services/voucherService";
 
 interface VehicleData {
   _id: string;
@@ -29,7 +30,17 @@ interface TripData {
   departureLocation: string;
   destinationLocation: string;
   createdAt?: string;
+  vouchers?: VoucherData[];
   // Add more fields as needed
+}
+
+interface VoucherData {
+  _id: string;
+  voucherNumber: string;
+  totalAmount: number;
+  remainingAmount: number;
+  paymentStatus: string;
+  trip_made: boolean;
 }
 
 interface DriverData {
@@ -92,6 +103,14 @@ export default function Trips() {
   const [selectedDriverForHistory, setSelectedDriverForHistory] = useState<DriverData | null>(null);
   const [isDriverHistoryOpen, setIsDriverHistoryOpen] = useState(false);
 
+  // Add state for available vouchers and selected vouchers
+  const [availableVouchers, setAvailableVouchers] = useState<any[]>([]);
+  const [selectedVouchers, setSelectedVouchers] = useState<string[]>([]);
+  
+  // Add state for trip view modal
+  const [isViewTripOpen, setIsViewTripOpen] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState<TripData | null>(null);
+
   // Fetch all data on mount and after add/delete
   const fetchAll = async () => {
     setLoadingVehicles(true); setLoadingDrivers(true); setLoadingTrips(true);
@@ -114,6 +133,13 @@ export default function Trips() {
     }
   };
   useEffect(() => { fetchAll(); }, []);
+
+  // Fetch available vouchers when trip form opens
+  useEffect(() => {
+    if (isTripFormOpen) {
+      voucherService.getAvailableVouchersForTrip().then(setAvailableVouchers);
+    }
+  }, [isTripFormOpen]);
 
   // Add Vehicle
   const handleVehicleSubmit = async (e: React.FormEvent) => {
@@ -183,7 +209,8 @@ export default function Trips() {
       vehicle: tripForm.vehicle._id,
       departureLocation: tripForm.departureLocation || '',
       destinationLocation: tripForm.destinationLocation || '',
-      createdAt: tripForm.createdAt || new Date().toISOString()
+      createdAt: tripForm.createdAt || new Date().toISOString(),
+      vouchers: selectedVouchers,
     };
     try {
       await createTrip(newTrip);
@@ -204,6 +231,11 @@ export default function Trips() {
     } catch {
       setTripError('Failed to delete trip!');
     }
+  };
+
+  const handleViewTrip = (trip: TripData) => {
+    setSelectedTrip(trip);
+    setIsViewTripOpen(true);
   };
 
   const filteredVehicles = (vehicles || []).filter(vehicle =>
@@ -402,6 +434,34 @@ export default function Trips() {
                     />
                   </div>
                 </div>
+                {/* Voucher Selection */}
+                <div className="mb-4">
+                  <Label>Vouchers for this Trip</Label>
+                  <div className="max-h-40 overflow-y-auto border rounded p-2 bg-gray-50">
+                    {availableVouchers.length === 0 ? (
+                      <div className="text-gray-500 text-sm">No available vouchers</div>
+                    ) : (
+                      availableVouchers.map(voucher => (
+                        <div key={voucher._id} className="flex items-center gap-2 py-1">
+                          <input
+                            type="checkbox"
+                            id={`voucher-${voucher._id}`}
+                            checked={selectedVouchers.includes(voucher._id)}
+                            onChange={e => {
+                              if (e.target.checked) setSelectedVouchers([...selectedVouchers, voucher._id]);
+                              else setSelectedVouchers(selectedVouchers.filter(id => id !== voucher._id));
+                            }}
+                            className="w-4 h-4 text-blue-600 rounded"
+                          />
+                          <label htmlFor={`voucher-${voucher._id}`} className="flex-1 cursor-pointer">
+                            <span className="font-medium">{voucher.voucherNumber}</span>
+                            <span className="text-xs text-gray-500 ml-2">Total: PKR {voucher.totalAmount?.toLocaleString?.() ?? ''}</span>
+                          </label>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
                 <div className="flex justify-end space-x-2">
                   <Button type="button" variant="outline" onClick={() => setIsTripFormOpen(false)}>
                     {language === 'ur' ? 'منسوخ کریں' : 'Cancel'}
@@ -553,14 +613,15 @@ export default function Trips() {
               <div className="text-red-500">{tripError}</div>
             ) : (
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{language === 'ur' ? 'ڈرائیور' : 'Driver'}</TableHead>
+                              <TableHeader>
+                  <TableRow>
+                    <TableHead>{language === 'ur' ? 'ڈرائیور' : 'Driver'}</TableHead>
                     <TableHead>{language === 'ur' ? 'گاڑی' : 'Vehicle'}</TableHead>
                     <TableHead>{language === 'ur' ? 'روانگی' : 'Departure'}</TableHead>
                     <TableHead>{language === 'ur' ? 'منزل' : 'Destination'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
-                    {/* Add more fields as needed */}
+                    <TableHead>{language === 'ur' ? 'واؤچرز' : 'Vouchers'}</TableHead>
+                    <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
+                    <TableHead>{language === 'ur' ? 'عمل' : 'Actions'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -570,7 +631,30 @@ export default function Trips() {
                       <TableCell>{trip.vehicle?.number}</TableCell>
                       <TableCell>{trip.departureLocation}</TableCell>
                       <TableCell>{trip.destinationLocation}</TableCell>
+                      <TableCell>
+                        {trip.vouchers && trip.vouchers.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {trip.vouchers.map((voucher, index) => (
+                              <Badge key={voucher._id} variant="secondary" className="text-xs">
+                                {voucher.voucherNumber}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">No vouchers</span>
+                        )}
+                      </TableCell>
                       <TableCell>{trip.createdAt ? new Date(trip.createdAt).toLocaleDateString() : ''}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleViewTrip(trip)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteTrip(trip._id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -743,6 +827,73 @@ export default function Trips() {
                 ))}
               </TableBody>
             </Table>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Trip View Dialog */}
+      <Dialog open={isViewTripOpen} onOpenChange={setIsViewTripOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>
+              {language === 'ur' ? 'ٹرپ کی تفصیلات' : 'Trip Details'}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedTrip && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="font-semibold">{language === 'ur' ? 'ڈرائیور' : 'Driver'}</Label>
+                  <p className="text-gray-700">{selectedTrip.driver?.name}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">{language === 'ur' ? 'گاڑی' : 'Vehicle'}</Label>
+                  <p className="text-gray-700">{selectedTrip.vehicle?.number} ({selectedTrip.vehicle?.type})</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">{language === 'ur' ? 'روانگی' : 'Departure'}</Label>
+                  <p className="text-gray-700">{selectedTrip.departureLocation}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">{language === 'ur' ? 'منزل' : 'Destination'}</Label>
+                  <p className="text-gray-700">{selectedTrip.destinationLocation}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">{language === 'ur' ? 'تاریخ' : 'Date'}</Label>
+                  <p className="text-gray-700">{selectedTrip.createdAt ? new Date(selectedTrip.createdAt).toLocaleDateString() : ''}</p>
+                </div>
+              </div>
+              
+              {selectedTrip.vouchers && selectedTrip.vouchers.length > 0 && (
+                <div>
+                  <Label className="font-semibold">{language === 'ur' ? 'واؤچرز' : 'Vouchers'}</Label>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{language === 'ur' ? 'واؤچر نمبر' : 'Voucher Number'}</TableHead>
+                        <TableHead>{language === 'ur' ? 'کل رقم' : 'Total Amount'}</TableHead>
+                        <TableHead>{language === 'ur' ? 'باقی رقم' : 'Remaining Amount'}</TableHead>
+                        <TableHead>{language === 'ur' ? 'ادائیگی کی حالت' : 'Payment Status'}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedTrip.vouchers.map((voucher) => (
+                        <TableRow key={voucher._id}>
+                          <TableCell className="font-medium">{voucher.voucherNumber}</TableCell>
+                          <TableCell>PKR {voucher.totalAmount?.toLocaleString()}</TableCell>
+                          <TableCell>PKR {voucher.remainingAmount?.toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Badge variant={voucher.paymentStatus === 'paid' ? 'default' : 'secondary'}>
+                              {voucher.paymentStatus === 'paid' ? (language === 'ur' ? 'ادا شدہ' : 'Paid') : (language === 'ur' ? 'ادا نہیں ہوا' : 'Unpaid')}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>

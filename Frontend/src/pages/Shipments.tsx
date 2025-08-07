@@ -373,6 +373,16 @@ export default function Shipments() {
     }
   };
 
+  const handleDeleteBilty = async (id: string) => {
+    try {
+      await shipmentService.deleteShipment(id);
+      toast({ title: 'Bilty deleted!' });
+      loadShipments();
+    } catch {
+      toast({ title: 'Failed to delete bilty', variant: 'destructive' });
+    }
+  };
+
   const filteredBiltyData = biltyData.filter(bilty => {
     const matchesSearch = 
       bilty.biltyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -981,6 +991,14 @@ export default function Shipments() {
                             <Download className="w-4 h-4" />
                           )}
                           </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteBilty(bilty.id)}
+                          disabled={loading}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </Button>
                     </div>
                   </TableCell>
                 </TableRow>

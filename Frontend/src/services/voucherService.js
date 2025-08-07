@@ -76,4 +76,10 @@ export const voucherService = {
       method: 'DELETE',
     });
   },
+
+  // Get vouchers available for trip (trip_made=false)
+  getAvailableVouchersForTrip: async () => {
+    const response = await apiCall('/vouchers/available-for-trip');
+    return response.data;
+  },
 };

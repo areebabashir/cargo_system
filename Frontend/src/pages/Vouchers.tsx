@@ -25,6 +25,7 @@ interface BiltyForVoucher {
   receivedFare: number;
   totalCharges: number;
   paymentStatus: string;
+  voucher_made: boolean;
   selected?: boolean;
 }
 
@@ -37,9 +38,6 @@ interface SelectedBilty {
 interface Voucher {
   _id: string;
   voucherNumber: string;
-  customerName: string;
-  customerPhone: string;
-  customerEmail?: string;
   bilties: Array<{
     biltyId: {
       _id: string;
@@ -92,8 +90,12 @@ export default function Vouchers() {
   // Load data on component mount
   useEffect(() => {
     loadVouchers();
-    loadAvailableBilties();
   }, [searchTerm, filterStatus, filterPayment]);
+
+  // Load available bilties when showOnlyUnpaid changes
+  useEffect(() => {
+    loadAvailableBilties();
+  }, [showOnlyUnpaid]);
 
   const loadVouchers = async () => {
     try {
@@ -118,10 +120,22 @@ export default function Vouchers() {
 
   const loadAvailableBilties = async () => {
     try {
-      const response = await shipmentService.getShipments();
-      console.log('Raw shipment data:', response.data); // Debug log
-      const bilties = (response.data || []).map((shipment: any) => {
-        console.log('Processing shipment:', shipment.biltyNumber, 'paymentStatus:', shipment.paymentStatus, 'remainingFare:', shipment.remainingFare); // Debug log
+      // Use the new endpoint that filters by voucher_made and payment status
+      const response = await fetch(`http://localhost:8000/api/shipments/available-for-vouchers?showOnlyUnpaid=${showOnlyUnpaid}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch available bilties');
+      }
+      
+      const result = await response.json();
+      console.log('Available bilties for vouchers:', result.data); // Debug log
+      
+      const bilties = (result.data || []).map((shipment: any) => {
+        console.log('Processing available bilty:', shipment.biltyNumber, 'paymentStatus:', shipment.paymentStatus, 'remainingFare:', shipment.remainingFare, 'voucher_made:', shipment.voucher_made); // Debug log
         return {
           id: shipment.id || shipment._id,
           biltyNumber: shipment.biltyNumber,
@@ -131,13 +145,14 @@ export default function Vouchers() {
           remainingFare: shipment.remainingFare || 0, // Unpaid amount
           receivedFare: shipment.receivedFare || 0,
           totalCharges: shipment.totalCharges || 0,
-          paymentStatus: shipment.paymentStatus || 'unpaid'
+          paymentStatus: shipment.paymentStatus || 'unpaid',
+          voucher_made: shipment.voucher_made || false
         };
       });
-      console.log('Processed bilties:', bilties); // Debug log
+      console.log('Processed available bilties:', bilties); // Debug log
       setAvailableBilties(bilties);
     } catch (error) {
-      console.error('Error loading bilties:', error);
+      console.error('Error loading available bilties:', error);
     }
   };
 
@@ -276,9 +291,7 @@ export default function Vouchers() {
       documentNumber: voucher.voucherNumber,
       voucherNumber: voucher.voucherNumber,
         date: new Date(voucher.createdAt).toLocaleDateString(),
-      customerName: voucher.customerName,
-      customerPhone: voucher.customerPhone,
-        customerEmail: voucher.customerEmail || '',
+    
         
         // Financial details
         amount: voucher.subtotal,
@@ -311,9 +324,7 @@ export default function Vouchers() {
         notes: voucher.notes || '',
         
         // Required dummy values for the interface
-        senderName: voucher.customerName,
-        senderPhone: voucher.customerPhone,
-        senderAddress: '',
+  
         receiverName: '',
         receiverPhone: '',
         receiverAddress: '',
@@ -346,6 +357,16 @@ export default function Vouchers() {
         description: language === 'ur' ? 'رسید ڈاؤن لوڈ کرنے میں خرابی' : 'Failed to download receipt',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleDeleteVoucher = async (id: string) => {
+    try {
+      await voucherService.deleteVoucher(id);
+      toast({ title: 'Voucher deleted!' });
+      loadVouchers();
+    } catch {
+      toast({ title: 'Failed to delete voucher', variant: 'destructive' });
     }
   };
 
@@ -415,6 +436,9 @@ export default function Vouchers() {
                     </label>
                   </div>
                 </div>
+                <div className="text-xs text-gray-500 mb-2">
+                  {language === 'ur' ? 'صرف وہ بلٹیز دکھائی جاتی ہیں جو پہلے سے واؤچر میں استعمال نہیں ہوئے' : 'Only bilties that have not been used in vouchers are shown'}
+                </div>
                 {/* Bilty Checkboxes */}
                 <div className="space-y-2 max-h-64 overflow-y-auto border rounded p-2 bg-gray-50">
                   {availableBilties.filter(bilty => {
@@ -460,6 +484,7 @@ export default function Vouchers() {
                             </span>
                             {bilty.paymentStatus === 'paid' && <span className="text-xs text-green-500">(Fully Paid)</span>}
                             {bilty.paymentStatus !== 'paid' && bilty.remainingFare === 0 && <span className="text-xs text-blue-500">(No Balance)</span>}
+                            {bilty.voucher_made && <span className="text-xs text-orange-500">(Voucher Made)</span>}
                           </div>
                         </label>
                       </div>
@@ -707,7 +732,7 @@ export default function Vouchers() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{language === 'ur' ? 'واؤچر نمبر' : 'Voucher Number'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'کسٹمر' : 'Customer'}</TableHead>
+                  {/* <TableHead>{language === 'ur' ? 'کسٹمر' : 'Customer'}</TableHead> */}
                   <TableHead>{language === 'ur' ? 'بلٹیز' : 'Bilties'}</TableHead>
                   <TableHead>{language === 'ur' ? 'کل رقم' : 'Total Amount'}</TableHead>
                   <TableHead>{language === 'ur' ? 'ادائیگی' : 'Payment'}</TableHead>
@@ -719,12 +744,12 @@ export default function Vouchers() {
                 {vouchers.map((voucher) => (
                   <TableRow key={voucher._id}>
                     <TableCell className="font-medium">{voucher.voucherNumber}</TableCell>
-                    <TableCell>
+                    {/* <TableCell>
                       <div>
                         <div className="font-medium">{voucher.customerName}</div>
                         <div className="text-sm text-gray-500">{voucher.customerPhone}</div>
                       </div>
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell>
                       <Badge variant="outline">
                         {voucher.bilties.length} {language === 'ur' ? 'بلٹیز' : 'Bilties'}
@@ -758,6 +783,13 @@ export default function Vouchers() {
                         >
                           <Download className="w-4 h-4" />
                           </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteVoucher(voucher._id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </Button>
                                 </div>
                     </TableCell>
                   </TableRow>

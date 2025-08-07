@@ -45,11 +45,26 @@ export const createVoucher = async (req, res) => {
       });
     }
 
+    // Check if any bilty is already used in a voucher
+    const usedBilties = shipments.filter(shipment => shipment.voucher_made);
+    if (usedBilties.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Bilties ${usedBilties.map(b => b.biltyNumber).join(', ')} are already used in vouchers`
+      });
+    }
+
     // Add createdBy field
     voucherData.createdBy = req.user._id;
 
     const voucher = new Voucher(voucherData);
     await voucher.save();
+
+    // Mark bilties as used in voucher
+    await Shipment.updateMany(
+      { _id: { $in: biltyIds } },
+      { voucher_made: true }
+    );
 
     // Populate the voucher with all shipment details needed by the frontend
     await voucher.populate({
@@ -210,6 +225,25 @@ export const deleteVoucher = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error deleting voucher',
+      error: error.message
+    });
+  }
+};
+
+// Get available vouchers for trips (not yet added to a trip)
+export const getAvailableVouchersForTrip = async (req, res) => {
+  try {
+    const vouchers = await Voucher.find({ trip_made: false })
+      .sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      data: vouchers
+    });
+  } catch (error) {
+    console.error('Error fetching available vouchers for trip:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching available vouchers for trip',
       error: error.message
     });
   }

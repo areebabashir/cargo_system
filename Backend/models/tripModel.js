@@ -5,6 +5,7 @@ const tripSchema = new mongoose.Schema({
   vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
   departureLocation: { type: String, required: true },
   destinationLocation: { type: String, required: true },
+  vouchers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Voucher' }],
   // Add more fields as needed (date, fare, etc.)
 }, { timestamps: true });
 

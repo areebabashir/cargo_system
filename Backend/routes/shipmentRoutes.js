@@ -5,7 +5,8 @@ import {
   getShipmentById,
   updateShipment,
   deleteShipment,
-  recalculateShipmentTotals
+  recalculateShipmentTotals,
+  getAvailableBiltiesForVouchers
 } from '../controllers/shipmentController.js';
 import { requireSignIn } from '../Middlewares/authMiddlewares.js';
 
@@ -31,5 +32,8 @@ router.delete('/delete/:id', deleteShipment);
 
 // Recalculate totals for existing shipments
 router.post('/recalculate-totals', recalculateShipmentTotals);
+
+// Get available bilties for vouchers
+router.get('/available-for-vouchers', getAvailableBiltiesForVouchers);
 
 export default router; 

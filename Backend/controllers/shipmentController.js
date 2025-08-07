@@ -425,4 +425,43 @@ export const recalculateShipmentTotals = async (req, res) => {
       error: error.message
     });
   }
+};
+
+// Get available bilties for vouchers (not used in vouchers yet)
+export const getAvailableBiltiesForVouchers = async (req, res) => {
+  try {
+    const { showOnlyUnpaid = 'true' } = req.query;
+    
+    let filter = { voucher_made: false };
+    
+    // If showOnlyUnpaid is true, only show unpaid bilties
+    if (showOnlyUnpaid === 'true') {
+      filter.paymentStatus = 'unpaid';
+      filter.remainingFare = { $gt: 0 };
+    }
+
+    const shipments = await Shipment.find(filter)
+      .select('biltyNumber senderName receiverName totalFare remainingFare receivedFare totalCharges paymentStatus voucher_made')
+      .sort({ createdAt: -1 });
+
+    // Transform _id to id for frontend compatibility
+    const transformedShipments = shipments.map(shipment => {
+      const shipmentObj = shipment.toObject();
+      shipmentObj.id = shipmentObj._id;
+      delete shipmentObj._id;
+      return shipmentObj;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: transformedShipments
+    });
+  } catch (error) {
+    console.error('Error fetching available bilties for vouchers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching available bilties for vouchers',
+      error: error.message
+    });
+  }
 }; 

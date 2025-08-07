@@ -4,6 +4,7 @@ const API_URL = 'http://localhost:8000/api/trips';
 
 export const getAllTrips = async () => {
   const response = await axios.get(API_URL);
+  console.log(response.data.data);
   return response.data.data;
 };
 

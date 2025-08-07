@@ -241,7 +241,7 @@ export default function StaffManagement() {
                     <TableCell className="font-medium flex items-center">
                       {staff.image && (
                         <img 
-                          src={`http://localhost:8000/uploads/${staff.image}`} 
+                          src={`http://localhost:8000${staff.image}`} 
                           alt={staff.name}
                           className="w-10 h-10 rounded-full mr-3 object-cover"
                         />
