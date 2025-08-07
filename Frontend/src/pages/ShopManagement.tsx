@@ -12,6 +12,9 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getAllShops, createShop, updateShop, deleteShop, getShopWithRentPayments } from "@/services/shopService";
 import { createRentPayment, updateRentPayment, deleteRentPayment, getAllRentPayments } from "@/services/rentPaymentService";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+
 
 // Declare jsPDF types for TypeScript
 declare global {
@@ -185,15 +188,13 @@ export default function ShopManagement() {
   // Handle PDF export
   const handleDownloadPDF = () => {
     if (!reportModal.shop) return;
-    
-    // Initialize jsPDF
-    const { jsPDF } = window.jspdf;
+  
     const doc = new jsPDF();
-    
+  
     let title = `${reportModal.shop.name} - `;
     let tableData: any[][] = [];
     let headers: string[] = [];
-    
+  
     if (reportModal.type === 'monthly') {
       title += `${selectedMonth} ${selectedYear} Report`;
       headers = ['Month', 'Year', 'Amount', 'Paid'];
@@ -209,15 +210,14 @@ export default function ShopManagement() {
         return [m, `₨${paid.toLocaleString()}`, `₨${unpaid.toLocaleString()}`];
       });
     }
-    
+  
     doc.text(title, 10, 10);
-    // Use autoTable plugin
-    (doc as any).autoTable({
+    autoTable(doc, {
       head: [headers],
       body: tableData,
-      startY: 20
+      startY: 20,
     });
-    
+  
     doc.save(`${reportModal.shop.name}-${reportModal.type === 'monthly' ? selectedMonth + '-' : ''}${selectedYear}-report.pdf`);
   };
 
