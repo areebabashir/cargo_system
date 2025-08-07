@@ -80,7 +80,7 @@ const Settings = () => {
             {language === 'ur' ? 'اپلیکیشن اور اکاؤنٹ کی سیٹنگز کا انتظام' : 'Manage your application and account settings'}
           </p>
         </div>
-        <Button onClick={handleSave} className="bg-gradient-primary hover:bg-primary-hover text-white">
+        <Button onClick={handleSave} className="bg-gradient-primary  text-white">
           <Save className="w-4 h-4 mr-2" />
           {language === 'ur' ? 'تبدیلیاں محفوظ کریں' : 'Save Changes'}
         </Button>

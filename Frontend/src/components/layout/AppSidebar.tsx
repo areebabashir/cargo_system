@@ -15,7 +15,8 @@ import {
   X,
   Globe,
   AlertTriangle,
-  Truck as TruckIcon
+  Truck as TruckIcon,
+  Building
 } from "lucide-react";
 
 import {
@@ -45,19 +46,9 @@ const navigationItems = [
     icon: Package,
   },
   {
-    title: { en: "Receipts", ur: "رسید" },
-    url: "/receipts",
-    icon: Receipt,
-  },
-  {
     title: { en: "Vouchers", ur: "واؤچرز" },
     url: "/vouchers",
     icon: Receipt,
-  },
-  {
-    title: { en: "Expenses", ur: "اخراجات" },
-    url: "/expenses",
-    icon: DollarSign,
   },
   {
     title: { en: "Staff", ur: "سٹاف" },
@@ -75,20 +66,17 @@ const navigationItems = [
     icon: Truck,
   },
   {
-    title: { en: "Reports", ur: "رپورٹس" },
-    url: "/reports",
-    icon: FileText,
-  },
-  {
     title: { en: "Claims", ur: "دعوے" },
     url: "/claims",
     icon: AlertTriangle,
-  },
+  }, 
   {
-    title: { en: "Delivery", ur: "ترسیل" },
-    url: "/delivery",
-    icon: TruckIcon,
+    title: { en: "Shop Management", ur: "شاپ مینجمنٹ" },
+    url: "/shop-management",
+    icon: Building,
   },
+
+ 
 ];
 
 export function AppSidebar() {
@@ -145,20 +133,7 @@ export function AppSidebar() {
           </div>
         </div>
 
-        {/* Language Toggle */}
-        {!isCollapsed && (
-          <div className="p-4 border-b border-sidebar-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLanguage(language === 'en' ? 'ur' : 'en')}
-              className="w-full justify-start text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent"
-            >
-              <Globe className={`w-4 h-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-              {language === 'en' ? 'اردو' : 'English'}
-            </Button>
-          </div>
-        )}
+    
 
         <SidebarGroup className="px-2 py-4">
           <SidebarGroupContent>

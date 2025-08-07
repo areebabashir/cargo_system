@@ -372,7 +372,7 @@ export default function Vouchers() {
         </div>
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-primary hover:bg-primary-hover text-white" disabled={loading}>
+            <Button className="bg-gradient-primary  text-white" disabled={loading}>
               <Plus className="w-4 h-4 mr-2" />
               {language === 'ur' ? 'نیا واؤچر' : 'New Voucher'}
             </Button>

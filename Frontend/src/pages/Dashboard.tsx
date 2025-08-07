@@ -62,20 +62,6 @@ const Dashboard = () => {
       onClick: () => console.log("New shipment")
     },
     {
-      title: t("newReceipt"),
-      description: "Generate a new receipt",
-      icon: Receipt,
-      variant: "default" as const,
-      onClick: () => console.log("New receipt")
-    },
-    {
-      title: t("addExpense"),
-      description: "Record business expenses",
-      icon: DollarSign,
-      variant: "default" as const,
-      onClick: () => console.log("Add expense")
-    },
-    {
       title: t("addStaff"),
       description: "Add new staff member",
       icon: UserPlus,

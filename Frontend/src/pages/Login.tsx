@@ -119,7 +119,7 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full bg-gradient-primary hover:bg-primary-hover text-white"
+              className="w-full bg-gradient-primary  text-white"
               disabled={loading}
             >
               {loading ? (

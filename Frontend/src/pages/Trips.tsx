@@ -8,238 +8,221 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getAllVehicles, createVehicle, deleteVehicle } from '../services/vehicleService';
+import { getAllDrivers, createDriver, deleteDriver } from '../services/driverService';
+import { getAllTrips, createTrip, deleteTrip } from '../services/tripService';
 
 interface VehicleData {
-  id: string;
-  vehicleNumber: string;
-  driverName: string;
-  driverPhone: string;
-  driverAddress: string;
-  vehicleType: string;
-  capacity: number;
-  registrationDate: string;
-  insuranceExpiry: string;
-  fitnessExpiry: string;
-  permitExpiry: string;
-  status: 'active' | 'inactive' | 'maintenance';
-  totalTrips: number;
-  totalEarnings: number;
-  outstandingBalance: number;
+  _id: string;
+  number: string;
+  type: string;
+  model: string;
+  trips?: TripData[];
 }
 
 interface TripData {
-  id: string;
-  vehicleId: string;
-  vehicleNumber: string;
-  driverName: string;
-  tripDate: string;
-  origin: string;
-  destination: string;
-  distance: number;
-  fare: number;
-  fuelCost: number;
-  driverPayment: number;
-  netEarnings: number;
-  status: 'completed' | 'ongoing' | 'cancelled';
-  notes: string;
+  _id: string;
+  driver: DriverData;
+  vehicle: VehicleData;
+  departureLocation: string;
+  destinationLocation: string;
+  createdAt?: string;
+  // Add more fields as needed
+}
+
+interface DriverData {
+  _id: string;
+  name: string;
+  phone: string;
+  address: string;
+  status?: 'active' | 'inactive';
+  trips?: TripData[];
 }
 
 export default function Trips() {
   const { t, language } = useLanguage();
   const [vehicles, setVehicles] = useState<VehicleData[]>([]);
+  const [loadingVehicles, setLoadingVehicles] = useState(false);
+  const [vehicleError, setVehicleError] = useState<string | null>(null);
   const [trips, setTrips] = useState<TripData[]>([]);
+  const [loadingTrips, setLoadingTrips] = useState(false);
+  const [tripError, setTripError] = useState<string | null>(null);
   const [isVehicleFormOpen, setIsVehicleFormOpen] = useState(false);
   const [isTripFormOpen, setIsTripFormOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [activeTab, setActiveTab] = useState<'vehicles' | 'trips'>('vehicles');
+  const [activeTab, setActiveTab] = useState<'vehicles' | 'trips' | 'drivers'>('vehicles');
+  const [drivers, setDrivers] = useState<DriverData[]>([]);
+  const [loadingDrivers, setLoadingDrivers] = useState(false);
+  const [driverError, setDriverError] = useState<string | null>(null);
+  const [isDriverFormOpen, setIsDriverFormOpen] = useState(false);
+  const [driverForm, setDriverForm] = useState<Partial<DriverData>>({
+    name: "",
+    phone: "",
+    address: ""
+  });
+  const [selectedDriver, setSelectedDriver] = useState<DriverData | null>(null);
 
   // Vehicle form state
   const [vehicleForm, setVehicleForm] = useState<Partial<VehicleData>>({
-    vehicleNumber: "",
-    driverName: "",
-    driverPhone: "",
-    driverAddress: "",
-    vehicleType: "",
-    capacity: 0,
-    registrationDate: "",
-    insuranceExpiry: "",
-    fitnessExpiry: "",
-    permitExpiry: "",
-    status: "active"
+    number: "",
+    type: "",
+    model: ""
   });
 
   // Trip form state
   const [tripForm, setTripForm] = useState<Partial<TripData>>({
-    vehicleId: "",
-    tripDate: "",
-    origin: "",
-    destination: "",
-    distance: 0,
-    fare: 0,
-    fuelCost: 0,
-    driverPayment: 0,
-    status: "ongoing",
-    notes: ""
+    driver: null,
+    vehicle: null,
+    departureLocation: "",
+    destinationLocation: ""
   });
 
-  // Sample data
-  useEffect(() => {
-    const sampleVehicles: VehicleData[] = [
-      {
-        id: "1",
-        vehicleNumber: "ABC-123",
-        driverName: "Muhammad Hassan",
-        driverPhone: "0300-1234567",
-        driverAddress: "House #45, Street 8, Karachi",
-        vehicleType: "Truck",
-        capacity: 5000,
-        registrationDate: "2023-01-15",
-        insuranceExpiry: "2024-12-31",
-        fitnessExpiry: "2024-06-30",
-        permitExpiry: "2024-12-31",
-        status: "active",
-        totalTrips: 45,
-        totalEarnings: 125000,
-        outstandingBalance: 5000
-      },
-      {
-        id: "2",
-        vehicleNumber: "XYZ-789",
-        driverName: "Ahmed Ali",
-        driverPhone: "0312-9876543",
-        driverAddress: "Flat #12, Building 3, Lahore",
-        vehicleType: "Van",
-        capacity: 2000,
-        registrationDate: "2023-03-20",
-        insuranceExpiry: "2024-11-30",
-        fitnessExpiry: "2024-05-15",
-        permitExpiry: "2024-10-31",
-        status: "active",
-        totalTrips: 32,
-        totalEarnings: 89000,
-        outstandingBalance: 0
-      }
-    ];
+  // Add loading and error states for each entity
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-    const sampleTrips: TripData[] = [
-      {
-        id: "1",
-        vehicleId: "1",
-        vehicleNumber: "ABC-123",
-        driverName: "Muhammad Hassan",
-        tripDate: "2024-01-15",
-        origin: "Karachi",
-        destination: "Lahore",
-        distance: 1200,
-        fare: 15000,
-        fuelCost: 8000,
-        driverPayment: 3000,
-        netEarnings: 4000,
-        status: "completed",
-        notes: "On-time delivery"
-      },
-      {
-        id: "2",
-        vehicleId: "2",
-        vehicleNumber: "XYZ-789",
-        driverName: "Ahmed Ali",
-        tripDate: "2024-01-16",
-        origin: "Islamabad",
-        destination: "Peshawar",
-        distance: 180,
-        fare: 5000,
-        fuelCost: 2500,
-        driverPayment: 1000,
-        netEarnings: 1500,
-        status: "ongoing",
-        notes: "In transit"
-      }
-    ];
+  // Add state for selected vehicle for history modal
+  const [selectedVehicleForHistory, setSelectedVehicleForHistory] = useState<VehicleData | null>(null);
+  const [isVehicleHistoryOpen, setIsVehicleHistoryOpen] = useState(false);
 
-    setVehicles(sampleVehicles);
-    setTrips(sampleTrips);
-  }, []);
+  // Add state for selected driver for history modal
+  const [selectedDriverForHistory, setSelectedDriverForHistory] = useState<DriverData | null>(null);
+  const [isDriverHistoryOpen, setIsDriverHistoryOpen] = useState(false);
 
-  const handleVehicleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newVehicle: VehicleData = {
-      id: Date.now().toString(),
-      ...vehicleForm,
-      totalTrips: 0,
-      totalEarnings: 0,
-      outstandingBalance: 0
-    } as VehicleData;
-
-    setVehicles([...vehicles, newVehicle]);
-    setVehicleForm({
-      vehicleNumber: "",
-      driverName: "",
-      driverPhone: "",
-      driverAddress: "",
-      vehicleType: "",
-      capacity: 0,
-      registrationDate: "",
-      insuranceExpiry: "",
-      fitnessExpiry: "",
-      permitExpiry: "",
-      status: "active"
-    });
-    setIsVehicleFormOpen(false);
+  // Fetch all data on mount and after add/delete
+  const fetchAll = async () => {
+    setLoadingVehicles(true); setLoadingDrivers(true); setLoadingTrips(true);
+    setVehicleError(null); setDriverError(null); setTripError(null);
+    try {
+      const [v, d, t] = await Promise.all([
+        getAllVehicles(),
+        getAllDrivers(),
+        getAllTrips()
+      ]);
+      setVehicles(v || []);
+      setDrivers(d || []);
+      setTrips(t || []);
+    } catch (err) {
+      setVehicleError('Failed to fetch vehicles');
+      setDriverError('Failed to fetch drivers');
+      setTripError('Failed to fetch trips');
+    } finally {
+      setLoadingVehicles(false); setLoadingDrivers(false); setLoadingTrips(false);
+    }
   };
+  useEffect(() => { fetchAll(); }, []);
 
-  const handleTripSubmit = (e: React.FormEvent) => {
+  // Add Vehicle
+  const handleVehicleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedVehicleData = vehicles.find(v => v.id === tripForm.vehicleId);
-    const newTrip: TripData = {
-      id: Date.now().toString(),
-      vehicleNumber: selectedVehicleData?.vehicleNumber || "",
-      driverName: selectedVehicleData?.driverName || "",
-      netEarnings: (tripForm.fare || 0) - (tripForm.fuelCost || 0) - (tripForm.driverPayment || 0),
-      ...tripForm
-    } as TripData;
-
-    setTrips([...trips, newTrip]);
-    setTripForm({
-      vehicleId: "",
-      tripDate: "",
-      origin: "",
-      destination: "",
-      distance: 0,
-      fare: 0,
-      fuelCost: 0,
-      driverPayment: 0,
-      status: "ongoing",
-      notes: ""
-    });
-    setIsTripFormOpen(false);
+    const newVehicle = {
+      number: vehicleForm.number || "",
+      type: vehicleForm.type || "",
+      model: vehicleForm.model || "",
+    };
+    try {
+      await createVehicle(newVehicle);
+      setSuccessMsg('Vehicle added!');
+      setVehicleForm({ number: '', type: '', model: '' });
+      setIsVehicleFormOpen(false);
+      fetchAll();
+    } catch {
+      setVehicleError('Failed to save vehicle!');
+    }
   };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-gray-100 text-gray-800';
-      case 'maintenance': return 'bg-yellow-100 text-yellow-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'ongoing': return 'bg-blue-100 text-blue-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+  // Delete Vehicle
+  const handleDeleteVehicle = async (id: string) => {
+    try {
+      await deleteVehicle(id);
+      setSuccessMsg('Vehicle deleted!');
+      fetchAll();
+    } catch {
+      setVehicleError('Failed to delete vehicle!');
     }
   };
 
-  const filteredVehicles = vehicles.filter(vehicle =>
-    vehicle.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vehicle.driverName.toLowerCase().includes(searchTerm.toLowerCase())
+  // Add Driver
+  const handleDriverSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newDriver = {
+      name: driverForm.name || "",
+      phone: driverForm.phone || "",
+      address: driverForm.address || "",
+      status: 'active'
+    };
+    try {
+      await createDriver(newDriver);
+      setSuccessMsg('Driver added!');
+      setDriverForm({ name: '', phone: '', address: '' });
+      setIsDriverFormOpen(false);
+      fetchAll();
+    } catch {
+      setDriverError('Failed to save driver!');
+    }
+  };
+  // Delete Driver
+  const handleDeleteDriver = async (id: string) => {
+    try {
+      await deleteDriver(id);
+      setSuccessMsg('Driver deleted!');
+      fetchAll();
+    } catch {
+      setDriverError('Failed to delete driver!');
+    }
+  };
+
+  // Add Trip
+  const handleTripSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tripForm.driver || !tripForm.vehicle) return;
+    const newTrip = {
+      driver: tripForm.driver._id,
+      vehicle: tripForm.vehicle._id,
+      departureLocation: tripForm.departureLocation || '',
+      destinationLocation: tripForm.destinationLocation || '',
+      createdAt: tripForm.createdAt || new Date().toISOString()
+    };
+    try {
+      await createTrip(newTrip);
+      setSuccessMsg('Trip added!');
+      setTripForm({ driver: null, vehicle: null, departureLocation: '', destinationLocation: '' });
+      setIsTripFormOpen(false);
+      fetchAll();
+    } catch {
+      setTripError('Failed to save trip!');
+    }
+  };
+  // Delete Trip
+  const handleDeleteTrip = async (id: string) => {
+    try {
+      await deleteTrip(id);
+      setSuccessMsg('Trip deleted!');
+      fetchAll();
+    } catch {
+      setTripError('Failed to delete trip!');
+    }
+  };
+
+  const filteredVehicles = (vehicles || []).filter(vehicle =>
+    vehicle.number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    vehicle.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    vehicle.model?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredTrips = trips.filter(trip =>
-    trip.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trip.driverName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trip.origin.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trip.destination.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTrips = (trips || []).filter(trip =>
+    trip.driver?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    trip.vehicle?.number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    trip.departureLocation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    trip.destinationLocation?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredDrivers = (drivers || []).filter(driver =>
+    driver.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    driver.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    driver.address?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -276,8 +259,8 @@ export default function Trips() {
                     </Label>
                     <Input
                       id="vehicleNumber"
-                      value={vehicleForm.vehicleNumber}
-                      onChange={(e) => setVehicleForm({...vehicleForm, vehicleNumber: e.target.value})}
+                      value={vehicleForm.number}
+                      onChange={(e) => setVehicleForm({...vehicleForm, number: e.target.value})}
                       placeholder={language === 'ur' ? 'گاڑی نمبر درج کریں' : 'Enter vehicle number'}
                     />
                   </div>
@@ -286,8 +269,8 @@ export default function Trips() {
                       {language === 'ur' ? 'گاڑی کی قسم' : 'Vehicle Type'}
                     </Label>
                     <Select
-                      value={vehicleForm.vehicleType}
-                      onValueChange={(value) => setVehicleForm({...vehicleForm, vehicleType: value})}
+                      value={vehicleForm.type}
+                      onValueChange={(value) => setVehicleForm({...vehicleForm, type: value})}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={language === 'ur' ? 'گاڑی کی قسم منتخب کریں' : 'Select vehicle type'} />
@@ -301,90 +284,14 @@ export default function Trips() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="driverName">
-                      {language === 'ur' ? 'ڈرائیور کا نام' : 'Driver Name'}
+                    <Label htmlFor="vehicleModel">
+                      {language === 'ur' ? 'گاڑی کا میڈل' : 'Vehicle Model'}
                     </Label>
                     <Input
-                      id="driverName"
-                      value={vehicleForm.driverName}
-                      onChange={(e) => setVehicleForm({...vehicleForm, driverName: e.target.value})}
-                      placeholder={language === 'ur' ? 'ڈرائیور کا نام درج کریں' : 'Enter driver name'}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="driverPhone">
-                      {language === 'ur' ? 'ڈرائیور کا فون' : 'Driver Phone'}
-                    </Label>
-                    <Input
-                      id="driverPhone"
-                      value={vehicleForm.driverPhone}
-                      onChange={(e) => setVehicleForm({...vehicleForm, driverPhone: e.target.value})}
-                      placeholder={language === 'ur' ? 'ڈرائیور کا فون درج کریں' : 'Enter driver phone'}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="capacity">
-                      {language === 'ur' ? 'صلاحیت (کلوگرام)' : 'Capacity (kg)'}
-                    </Label>
-                    <Input
-                      id="capacity"
-                      type="number"
-                      value={vehicleForm.capacity}
-                      onChange={(e) => setVehicleForm({...vehicleForm, capacity: parseInt(e.target.value)})}
-                      placeholder={language === 'ur' ? 'صلاحیت درج کریں' : 'Enter capacity'}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="status">
-                      {language === 'ur' ? 'حیثیت' : 'Status'}
-                    </Label>
-                    <Select
-                      value={vehicleForm.status}
-                      onValueChange={(value) => setVehicleForm({...vehicleForm, status: value as 'active' | 'inactive' | 'maintenance'})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">{language === 'ur' ? 'فعال' : 'Active'}</SelectItem>
-                        <SelectItem value="inactive">{language === 'ur' ? 'غیر فعال' : 'Inactive'}</SelectItem>
-                        <SelectItem value="maintenance">{language === 'ur' ? 'مرمت' : 'Maintenance'}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="driverAddress">
-                    {language === 'ur' ? 'ڈرائیور کا پتہ' : 'Driver Address'}
-                  </Label>
-                  <Textarea
-                    id="driverAddress"
-                    value={vehicleForm.driverAddress}
-                    onChange={(e) => setVehicleForm({...vehicleForm, driverAddress: e.target.value})}
-                    placeholder={language === 'ur' ? 'ڈرائیور کا پتہ درج کریں' : 'Enter driver address'}
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="registrationDate">
-                      {language === 'ur' ? 'رجسٹریشن کی تاریخ' : 'Registration Date'}
-                    </Label>
-                    <Input
-                      id="registrationDate"
-                      type="date"
-                      value={vehicleForm.registrationDate}
-                      onChange={(e) => setVehicleForm({...vehicleForm, registrationDate: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="insuranceExpiry">
-                      {language === 'ur' ? 'انشورنس کی میعاد ختم' : 'Insurance Expiry'}
-                    </Label>
-                    <Input
-                      id="insuranceExpiry"
-                      type="date"
-                      value={vehicleForm.insuranceExpiry}
-                      onChange={(e) => setVehicleForm({...vehicleForm, insuranceExpiry: e.target.value})}
+                      id="vehicleModel"
+                      value={vehicleForm.model}
+                      onChange={(e) => setVehicleForm({...vehicleForm, model: e.target.value})}
+                      placeholder={language === 'ur' ? 'گاڑی کا میڈل درج کریں' : 'Enter vehicle model'}
                     />
                   </div>
                 </div>
@@ -392,7 +299,7 @@ export default function Trips() {
                   <Button type="button" variant="outline" onClick={() => setIsVehicleFormOpen(false)}>
                     {language === 'ur' ? 'منسوخ کریں' : 'Cancel'}
                   </Button>
-                  <Button type="submit" className="bg-gradient-primary hover:bg-primary-hover text-white">
+                  <Button type="submit" className="bg-gradient-primary text-white">
                     {language === 'ur' ? 'گاڑی شامل کریں' : 'Add Vehicle'}
                   </Button>
                 </div>
@@ -402,7 +309,7 @@ export default function Trips() {
 
           <Dialog open={isTripFormOpen} onOpenChange={setIsTripFormOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-primary hover:bg-primary-hover text-white">
+              <Button className="bg-gradient-primary  text-white">
                 <Plus className="w-4 h-4 mr-2" />
                 {language === 'ur' ? 'نیا ٹرپ' : 'New Trip'}
               </Button>
@@ -420,16 +327,42 @@ export default function Trips() {
                       {language === 'ur' ? 'گاڑی منتخب کریں' : 'Select Vehicle'}
                     </Label>
                     <Select
-                      value={tripForm.vehicleId}
-                      onValueChange={(value) => setTripForm({...tripForm, vehicleId: value})}
+                      value={tripForm.vehicle?._id || ""}
+                      onValueChange={(value) => {
+                        const selected = vehicles.find(v => v._id === value);
+                        setTripForm(prev => ({ ...prev, vehicle: selected || null }));
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={language === 'ur' ? 'گاڑی منتخب کریں' : 'Select vehicle'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {vehicles.map(vehicle => (
-                          <SelectItem key={vehicle.id} value={vehicle.id}>
-                            {vehicle.vehicleNumber} - {vehicle.driverName}
+                        {(vehicles || []).map(vehicle => (
+                          <SelectItem key={vehicle._id} value={vehicle._id}>
+                            {vehicle.number} - {vehicle.type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="driverId">
+                      {language === 'ur' ? 'ڈرائیور منتخب کریں' : 'Select Driver'}
+                    </Label>
+                    <Select
+                      value={tripForm.driver?._id || ""}
+                      onValueChange={(value) => {
+                        const selected = drivers.find(d => d._id === value);
+                        setTripForm(prev => ({ ...prev, driver: selected || null }));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={language === 'ur' ? 'ڈرائیور منتخب کریں' : 'Select driver'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(drivers || []).map(driver => (
+                          <SelectItem key={driver._id} value={driver._id}>
+                            {driver.name} - {driver.phone}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -442,8 +375,8 @@ export default function Trips() {
                     <Input
                       id="tripDate"
                       type="date"
-                      value={tripForm.tripDate}
-                      onChange={(e) => setTripForm({...tripForm, tripDate: e.target.value})}
+                      value={tripForm.createdAt ? new Date(tripForm.createdAt).toISOString().split('T')[0] : ''}
+                      onChange={(e) => setTripForm(prev => ({ ...prev, createdAt: e.target.value }))}
                     />
                   </div>
                   <div>
@@ -452,8 +385,8 @@ export default function Trips() {
                     </Label>
                     <Input
                       id="origin"
-                      value={tripForm.origin}
-                      onChange={(e) => setTripForm({...tripForm, origin: e.target.value})}
+                      value={tripForm.departureLocation}
+                      onChange={(e) => setTripForm({...tripForm, departureLocation: e.target.value})}
                       placeholder={language === 'ur' ? 'شروع کا مقام' : 'Origin location'}
                     />
                   </div>
@@ -463,79 +396,53 @@ export default function Trips() {
                     </Label>
                     <Input
                       id="destination"
-                      value={tripForm.destination}
-                      onChange={(e) => setTripForm({...tripForm, destination: e.target.value})}
+                      value={tripForm.destinationLocation}
+                      onChange={(e) => setTripForm({...tripForm, destinationLocation: e.target.value})}
                       placeholder={language === 'ur' ? 'منزل کا مقام' : 'Destination location'}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="distance">
-                      {language === 'ur' ? 'فاصلہ (کلومیٹر)' : 'Distance (km)'}
-                    </Label>
-                    <Input
-                      id="distance"
-                      type="number"
-                      value={tripForm.distance}
-                      onChange={(e) => setTripForm({...tripForm, distance: parseInt(e.target.value)})}
-                      placeholder={language === 'ur' ? 'فاصلہ درج کریں' : 'Enter distance'}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="fare">
-                      {language === 'ur' ? 'کرایہ' : 'Fare'}
-                    </Label>
-                    <Input
-                      id="fare"
-                      type="number"
-                      value={tripForm.fare}
-                      onChange={(e) => setTripForm({...tripForm, fare: parseInt(e.target.value)})}
-                      placeholder={language === 'ur' ? 'کرایہ درج کریں' : 'Enter fare'}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="fuelCost">
-                      {language === 'ur' ? 'ایندھن کی لاگت' : 'Fuel Cost'}
-                    </Label>
-                    <Input
-                      id="fuelCost"
-                      type="number"
-                      value={tripForm.fuelCost}
-                      onChange={(e) => setTripForm({...tripForm, fuelCost: parseInt(e.target.value)})}
-                      placeholder={language === 'ur' ? 'ایندھن کی لاگت درج کریں' : 'Enter fuel cost'}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="driverPayment">
-                      {language === 'ur' ? 'ڈرائیور کی ادائیگی' : 'Driver Payment'}
-                    </Label>
-                    <Input
-                      id="driverPayment"
-                      type="number"
-                      value={tripForm.driverPayment}
-                      onChange={(e) => setTripForm({...tripForm, driverPayment: parseInt(e.target.value)})}
-                      placeholder={language === 'ur' ? 'ڈرائیور کی ادائیگی درج کریں' : 'Enter driver payment'}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="notes">
-                    {language === 'ur' ? 'نوٹس' : 'Notes'}
-                  </Label>
-                  <Textarea
-                    id="notes"
-                    value={tripForm.notes}
-                    onChange={(e) => setTripForm({...tripForm, notes: e.target.value})}
-                    placeholder={language === 'ur' ? 'نوٹس درج کریں' : 'Enter notes'}
-                  />
                 </div>
                 <div className="flex justify-end space-x-2">
                   <Button type="button" variant="outline" onClick={() => setIsTripFormOpen(false)}>
                     {language === 'ur' ? 'منسوخ کریں' : 'Cancel'}
                   </Button>
-                  <Button type="submit" className="bg-gradient-primary hover:bg-primary-hover text-white">
+                  <Button type="submit" className="bg-gradient-primary  text-white">
                     {language === 'ur' ? 'ٹرپ شامل کریں' : 'Add Trip'}
                   </Button>
                 </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isDriverFormOpen} onOpenChange={setIsDriverFormOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <User className="w-4 h-4 mr-2" />
+                {language === 'ur' ? 'نیا ڈرائیور' : 'New Driver'}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>{language === 'ur' ? 'نیا ڈرائیور شامل کریں' : 'Add New Driver'}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleDriverSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="driverName">{language === 'ur' ? 'نام' : 'Name'}</Label>
+                    <Input id="driverName" value={driverForm.name} onChange={e => setDriverForm({ ...driverForm, name: e.target.value })} required />
+                  </div>
+                  <div>
+                    <Label htmlFor="driverPhone">{language === 'ur' ? 'فون' : 'Phone'}</Label>
+                    <Input id="driverPhone" value={driverForm.phone} onChange={e => setDriverForm({ ...driverForm, phone: e.target.value })} required />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="driverAddress">{language === 'ur' ? 'پتہ' : 'Address'}</Label>
+                    <Input id="driverAddress" value={driverForm.address} onChange={e => setDriverForm({ ...driverForm, address: e.target.value })} required />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full bg-gradient-primary  text-white">
+                  {language === 'ur' ? 'محفوظ کریں' : 'Save'}
+                </Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -543,22 +450,15 @@ export default function Trips() {
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-        <Button
-          variant={activeTab === 'vehicles' ? 'default' : 'ghost'}
-          onClick={() => setActiveTab('vehicles')}
-          className="flex-1"
-        >
-          <Truck className="w-4 h-4 mr-2" />
+      <div className="flex space-x-2 mb-4">
+        <Button variant={activeTab === 'vehicles' ? 'default' : 'outline'} onClick={() => setActiveTab('vehicles')}>
           {language === 'ur' ? 'گاڑیاں' : 'Vehicles'}
         </Button>
-        <Button
-          variant={activeTab === 'trips' ? 'default' : 'ghost'}
-          onClick={() => setActiveTab('trips')}
-          className="flex-1"
-        >
-          <MapPin className="w-4 h-4 mr-2" />
+        <Button variant={activeTab === 'trips' ? 'default' : 'outline'} onClick={() => setActiveTab('trips')}>
           {language === 'ur' ? 'ٹرپس' : 'Trips'}
+        </Button>
+        <Button variant={activeTab === 'drivers' ? 'default' : 'outline'} onClick={() => setActiveTab('drivers')}>
+          {language === 'ur' ? 'ڈرائیورز' : 'Drivers'}
         </Button>
       </div>
 
@@ -592,49 +492,37 @@ export default function Trips() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {loadingVehicles ? (
+              <div>Loading vehicles...</div>
+            ) : vehicleError ? (
+              <div className="text-red-500">{vehicleError}</div>
+            ) : (
+              <>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>{language === 'ur' ? 'گاڑی نمبر' : 'Vehicle No.'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'ڈرائیور' : 'Driver'}</TableHead>
                   <TableHead>{language === 'ur' ? 'قسم' : 'Type'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'صلاحیت' : 'Capacity'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'کل ٹرپس' : 'Total Trips'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'کل آمدنی' : 'Total Earnings'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'حیثیت' : 'Status'}</TableHead>
+                      <TableHead>{language === 'ur' ? 'میڈل' : 'Model'}</TableHead>
                   <TableHead>{language === 'ur' ? 'عمل' : 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredVehicles.map((vehicle) => (
-                  <TableRow key={vehicle.id}>
-                    <TableCell className="font-medium">{vehicle.vehicleNumber}</TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{vehicle.driverName}</div>
-                        <div className="text-sm text-gray-500">{vehicle.driverPhone}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{vehicle.vehicleType}</TableCell>
-                    <TableCell>{vehicle.capacity} kg</TableCell>
-                    <TableCell>{vehicle.totalTrips}</TableCell>
-                    <TableCell>₨{vehicle.totalEarnings.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(vehicle.status)}>
-                        {language === 'ur' 
-                          ? (vehicle.status === 'active' ? 'فعال' : 
-                             vehicle.status === 'inactive' ? 'غیر فعال' : 'مرمت')
-                          : vehicle.status
-                        }
-                      </Badge>
-                    </TableCell>
+                    {(vehicles || []).map((vehicle) => (
+                      <TableRow key={vehicle._id}>
+                        <TableCell className="font-medium">{vehicle.number}</TableCell>
+                        <TableCell>{vehicle.type}</TableCell>
+                        <TableCell>{vehicle.model}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button size="sm" variant="ghost">
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button size="sm" variant="ghost">
+                        <Button size="sm" variant="ghost" onClick={() => handleDeleteVehicle(vehicle._id)}>
                           <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setSelectedVehicleForHistory(vehicle); setIsVehicleHistoryOpen(true); }}>
+                          <Clock className="w-4 h-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -642,6 +530,10 @@ export default function Trips() {
                 ))}
               </TableBody>
             </Table>
+                {/* Trip history for selected vehicle */}
+                {/* You can add a selectedVehicle state and show trip history like drivers if needed */}
+              </>
+            )}
           </CardContent>
         </Card>
       )}
@@ -655,56 +547,205 @@ export default function Trips() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {loadingTrips ? (
+              <div>Loading trips...</div>
+            ) : tripError ? (
+              <div className="text-red-500">{tripError}</div>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{language === 'ur' ? 'گاڑی نمبر' : 'Vehicle No.'}</TableHead>
                   <TableHead>{language === 'ur' ? 'ڈرائیور' : 'Driver'}</TableHead>
+                    <TableHead>{language === 'ur' ? 'گاڑی' : 'Vehicle'}</TableHead>
+                    <TableHead>{language === 'ur' ? 'روانگی' : 'Departure'}</TableHead>
+                    <TableHead>{language === 'ur' ? 'منزل' : 'Destination'}</TableHead>
                   <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'شروع' : 'Origin'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'منزل' : 'Destination'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'فاصلہ' : 'Distance'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'خالص آمدنی' : 'Net Earnings'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'حیثیت' : 'Status'}</TableHead>
+                    {/* Add more fields as needed */}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(trips || []).map(trip => (
+                    <TableRow key={trip._id}>
+                      <TableCell>{trip.driver?.name}</TableCell>
+                      <TableCell>{trip.vehicle?.number}</TableCell>
+                      <TableCell>{trip.departureLocation}</TableCell>
+                      <TableCell>{trip.destinationLocation}</TableCell>
+                      <TableCell>{trip.createdAt ? new Date(trip.createdAt).toLocaleDateString() : ''}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Drivers Tab */}
+      {activeTab === 'drivers' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{language === 'ur' ? 'ڈرائیورز' : 'Drivers'}</CardTitle>
+            <Dialog open={isDriverFormOpen} onOpenChange={setIsDriverFormOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <User className="w-4 h-4 mr-2" />
+                  {language === 'ur' ? 'نیا ڈرائیور' : 'New Driver'}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>{language === 'ur' ? 'نیا ڈرائیور شامل کریں' : 'Add New Driver'}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleDriverSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="driverName">{language === 'ur' ? 'نام' : 'Name'}</Label>
+                      <Input id="driverName" value={driverForm.name} onChange={e => setDriverForm({ ...driverForm, name: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="driverPhone">{language === 'ur' ? 'فون' : 'Phone'}</Label>
+                      <Input id="driverPhone" value={driverForm.phone} onChange={e => setDriverForm({ ...driverForm, phone: e.target.value })} required />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label htmlFor="driverAddress">{language === 'ur' ? 'پتہ' : 'Address'}</Label>
+                      <Input id="driverAddress" value={driverForm.address} onChange={e => setDriverForm({ ...driverForm, address: e.target.value })} required />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full bg-gradient-primary text-white">
+                    {language === 'ur' ? 'محفوظ کریں' : 'Save'}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </CardHeader>
+          <CardContent>
+            {loadingDrivers ? (
+              <div>Loading drivers...</div>
+            ) : driverError ? (
+              <div className="text-red-500">{driverError}</div>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{language === 'ur' ? 'نام' : 'Name'}</TableHead>
+                      <TableHead>{language === 'ur' ? 'فون' : 'Phone'}</TableHead>
+                      <TableHead>{language === 'ur' ? 'پتہ' : 'Address'}</TableHead>
                   <TableHead>{language === 'ur' ? 'عمل' : 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTrips.map((trip) => (
-                  <TableRow key={trip.id}>
-                    <TableCell className="font-medium">{trip.vehicleNumber}</TableCell>
-                    <TableCell>{trip.driverName}</TableCell>
-                    <TableCell>{trip.tripDate}</TableCell>
-                    <TableCell>{trip.origin}</TableCell>
-                    <TableCell>{trip.destination}</TableCell>
-                    <TableCell>{trip.distance} km</TableCell>
-                    <TableCell>₨{trip.netEarnings.toLocaleString()}</TableCell>
+                    {(drivers || []).map(driver => (
+                      <TableRow key={driver._id}>
+                        <TableCell className="font-medium cursor-pointer" onClick={() => setSelectedDriver(driver)}>{driver.name}</TableCell>
+                        <TableCell>{driver.phone}</TableCell>
+                        <TableCell>{driver.address}</TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(trip.status)}>
-                        {language === 'ur' 
-                          ? (trip.status === 'completed' ? 'مکمل' : 
-                             trip.status === 'ongoing' ? 'جاری' : 'منسوخ')
-                          : trip.status
-                        }
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button size="sm" variant="ghost">
-                          <Edit className="w-4 h-4" />
+                          <Button size="sm" variant="ghost" onClick={() => setSelectedDriver(driver)}>
+                            <Search className="w-4 h-4" />
                         </Button>
-                        <Button size="sm" variant="ghost">
+                        <Button size="sm" variant="ghost" onClick={() => handleDeleteDriver(driver._id)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
-                      </div>
+                        <Button size="sm" variant="ghost" onClick={() => { setSelectedDriverForHistory(driver); setIsDriverHistoryOpen(true); }}>
+                          <Clock className="w-4 h-4" />
+                        </Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+                {/* Trip history for selected driver */}
+                {selectedDriver && selectedDriver.trips && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-2">{selectedDriver.name} - {language === 'ur' ? 'ٹرپ ہسٹری' : 'Trip History'}</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{language === 'ur' ? 'گاڑی نمبر' : 'Vehicle No.'}</TableHead>
+                          <TableHead>{language === 'ur' ? 'منزل' : 'Destination'}</TableHead>
+                          <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(selectedDriver.trips || []).map(trip => (
+                          <TableRow key={trip._id}>
+                            <TableCell>{trip.vehicle?.number}</TableCell>
+                            <TableCell>{trip.destinationLocation}</TableCell>
+                            <TableCell>{trip.createdAt ? new Date(trip.createdAt).toLocaleDateString() : ''}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
       )}
+
+      {/* Vehicle History Dialog */}
+      <Dialog open={isVehicleHistoryOpen} onOpenChange={setIsVehicleHistoryOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedVehicleForHistory?.number} {language === 'ur' ? 'کی ٹرپ ہسٹری' : 'Trip History'}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedVehicleForHistory && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{language === 'ur' ? 'ڈرائیور' : 'Driver'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'منزل' : 'Destination'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(trips.filter(trip => trip.vehicle?._id === selectedVehicleForHistory._id)).map(trip => (
+                  <TableRow key={trip._id}>
+                    <TableCell>{trip.driver?.name}</TableCell>
+                    <TableCell>{trip.destinationLocation}</TableCell>
+                    <TableCell>{trip.createdAt ? new Date(trip.createdAt).toLocaleDateString() : ''}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Driver History Dialog */}
+      <Dialog open={isDriverHistoryOpen} onOpenChange={setIsDriverHistoryOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedDriverForHistory?.name} {language === 'ur' ? 'کی ٹرپ ہسٹری' : 'Trip History'}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedDriverForHistory && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{language === 'ur' ? 'گاڑی نمبر' : 'Vehicle No.'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'منزل' : 'Destination'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(trips.filter(trip => trip.driver?._id === selectedDriverForHistory._id)).map(trip => (
+                  <TableRow key={trip._id}>
+                    <TableCell>{trip.vehicle?.number}</TableCell>
+                    <TableCell>{trip.destinationLocation}</TableCell>
+                    <TableCell>{trip.createdAt ? new Date(trip.createdAt).toLocaleDateString() : ''}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
