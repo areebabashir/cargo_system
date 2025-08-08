@@ -121,7 +121,10 @@ export const getTopCustomers = async (req, res) => {
     const transformedCustomers = topCustomers.map(customer => {
       const customerObj = customer.toObject();
       customerObj.id = customerObj._id;
+      customerObj.biltyCount = customerObj.bilties ? customerObj.bilties.length : 0;
       delete customerObj._id;
+      // Remove the bilties array to reduce payload size
+      delete customerObj.bilties;
       return customerObj;
     });
     
@@ -155,4 +158,4 @@ export const getPaymentStats = async (req, res) => {
     console.error('Error fetching payment stats:', error);
     res.status(500).json({ success: false, message: 'Error fetching payment stats', error: error.message });
   }
-}; 
+};
