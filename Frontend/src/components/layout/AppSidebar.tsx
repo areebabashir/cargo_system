@@ -75,6 +75,11 @@ const navigationItems = [
     url: "/shop-management",
     icon: Building,
   },
+  {
+    title: { en: "Financial Reports", ur: "مالیاتی رپورٹس" },
+    url: "/financial-reports",
+    icon: DollarSign,
+  },
 
  
 ];
