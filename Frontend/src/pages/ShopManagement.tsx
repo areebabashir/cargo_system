@@ -12,6 +12,9 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getAllShops, createShop, updateShop, deleteShop, getShopWithRentPayments } from "@/services/shopService";
 import { createRentPayment, updateRentPayment, deleteRentPayment, getAllRentPayments } from "@/services/rentPaymentService";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+
 
 // Declare jsPDF types for TypeScript
 declare global {
@@ -183,43 +186,86 @@ export default function ShopManagement() {
   };
 
   // Handle PDF export
-  const handleDownloadPDF = () => {
-    if (!reportModal.shop) return;
-    
-    // Initialize jsPDF
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    let title = `${reportModal.shop.name} - `;
-    let tableData: any[][] = [];
-    let headers: string[] = [];
-    
-    if (reportModal.type === 'monthly') {
-      title += `${selectedMonth} ${selectedYear} Report`;
-      headers = ['Month', 'Year', 'Amount', 'Paid'];
-      const payments = getPaymentsForShopMonthYear(reportModal.shop._id, selectedMonth, selectedYear);
-      tableData = payments.map(p => [p.month, p.year, `₨${p.amount.toLocaleString()}`, p.paid ? 'Paid' : 'Unpaid']);
-    } else if (reportModal.type === 'yearly') {
-      title += `${selectedYear} Yearly Report`;
-      headers = ['Month', 'Total Paid', 'Total Unpaid'];
-      tableData = months.map(m => {
-        const payments = getPaymentsForShopYear(reportModal.shop._id, selectedYear).filter(p => p.month === m);
-        const paid = payments.filter(p => p.paid).reduce((sum, p) => sum + p.amount, 0);
-        const unpaid = payments.filter(p => !p.paid).reduce((sum, p) => sum + p.amount, 0);
-        return [m, `₨${paid.toLocaleString()}`, `₨${unpaid.toLocaleString()}`];
-      });
-    }
-    
-    doc.text(title, 10, 10);
-    // Use autoTable plugin
-    (doc as any).autoTable({
-      head: [headers],
-      body: tableData,
-      startY: 20
+ 
+const handleDownloadPDF = () => {
+  if (!reportModal.shop) return;
+
+  const doc = new jsPDF();
+
+  let title = `${reportModal.shop.name} - `;
+  let tableData: any[][] = [];
+  let headers: string[] = [];
+
+  if (reportModal.type === 'monthly') {
+    title += `${selectedMonth} ${selectedYear} Report`;
+    headers = ['Month', 'Year', 'Amount', 'Paid'];
+    const payments = getPaymentsForShopMonthYear(reportModal.shop._id, selectedMonth, selectedYear);
+    tableData = payments.map(p => [
+      p.month,
+      p.year,
+      `Rs ${p.amount.toLocaleString()}`,
+      p.paid ? 'Paid' : 'Unpaid'
+    ]);
+  } else if (reportModal.type === 'yearly') {
+    title += `${selectedYear} Yearly Report`;
+    headers = ['Month', 'Total Paid', 'Total Unpaid'];
+
+    let totalPaid = 0;
+    let totalUnpaid = 0;
+
+    tableData = months.map(m => {
+      const payments = getPaymentsForShopYear(reportModal.shop._id, selectedYear).filter(p => p.month === m);
+      const paid = payments.filter(p => p.paid).reduce((sum, p) => sum + p.amount, 0);
+      const unpaid = payments.filter(p => !p.paid).reduce((sum, p) => sum + p.amount, 0);
+
+      totalPaid += paid;
+      totalUnpaid += unpaid;
+
+      return [
+        m,
+        `Rs ${paid.toLocaleString()}`,
+        `Rs ${unpaid.toLocaleString()}`
+      ];
     });
-    
-    doc.save(`${reportModal.shop.name}-${reportModal.type === 'monthly' ? selectedMonth + '-' : ''}${selectedYear}-report.pdf`);
-  };
+
+    // Add total row at the bottom
+    tableData.push([
+      'Total',
+      `Rs ${totalPaid.toLocaleString()}`,
+      `Rs ${totalUnpaid.toLocaleString()}`
+    ]);
+  }
+
+  doc.text(title, 10, 10);
+
+  autoTable(doc, {
+    head: [headers],
+    body: tableData,
+    startY: 20,
+    styles: {
+      font: 'helvetica',
+    },
+    headStyles: {
+      fillColor: [33, 150, 243], // blue
+      textColor: 255,
+      halign: 'center',
+    },
+    bodyStyles: {
+      halign: 'center',
+    },
+    didParseCell: function (data) {
+      // If it's the last row (Total), color it blue
+      const isTotalRow = data.row.index === tableData.length - 1;
+      if (isTotalRow && data.section === 'body') {
+        data.cell.styles.fillColor = [33, 150, 243]; // blue background
+        data.cell.styles.textColor = 255; // white text
+        data.cell.styles.fontStyle = 'bold';
+      }
+    }
+  });
+
+  doc.save(`${reportModal.shop.name}-${reportModal.type === 'monthly' ? selectedMonth + '-' : ''}${selectedYear}-report.pdf`);
+};
 
   // Handle shop form submission
   const handleShopSubmit = async (e: React.FormEvent) => {
@@ -605,7 +651,7 @@ export default function ShopManagement() {
                       <TableCell>{shop.location}</TableCell>
                       <TableCell>{shop.size}</TableCell>
                       <TableCell>{shop.tenant || '-'}</TableCell>
-                      <TableCell>₨{shop.monthlyRent.toLocaleString()}</TableCell>
+                      <TableCell>Rs{shop.monthlyRent.toLocaleString()}</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(shop.status)}>
                           {getStatusText(shop.status)}
@@ -651,7 +697,7 @@ export default function ShopManagement() {
                     <div>
                       <p className="text-sm text-gray-600">{language === 'ur' ? 'کل کرایہ' : 'Total Rent'}</p>
                       <p className="text-2xl font-bold text-green-600">
-                        ₨{shops.reduce((sum, shop) => sum + shop.monthlyRent, 0).toLocaleString()}
+                        Rs{shops.reduce((sum, shop) => sum + shop.monthlyRent, 0).toLocaleString()}
                       </p>
                     </div>
                     <DollarSign className="w-8 h-8 text-green-600" />
@@ -702,8 +748,8 @@ export default function ShopManagement() {
                     <TableRow key={shop._id}>
                       <TableCell className="font-medium">{shop.name}</TableCell>
                       <TableCell>{shop.tenant}</TableCell>
-                      <TableCell>₨{shop.monthlyRent.toLocaleString()}</TableCell>
-                      <TableCell>₨{totalPaid.toLocaleString()}</TableCell>
+                      <TableCell>Rs{shop.monthlyRent.toLocaleString()}</TableCell>
+                      <TableCell>Rs{totalPaid.toLocaleString()}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <Button size="sm" variant="ghost" onClick={() => handleShopDetail(shop)}>
@@ -736,7 +782,7 @@ export default function ShopManagement() {
                     <div>
                       <p className="text-sm text-gray-600">{language === 'ur' ? 'کل آمدنی' : 'Total Income'}</p>
                       <p className="text-2xl font-bold text-green-600">
-                        ₨{shops.reduce((sum, shop) => sum + shop.monthlyRent, 0).toLocaleString()}
+                        Rs{shops.reduce((sum, shop) => sum + shop.monthlyRent, 0).toLocaleString()}
                       </p>
                     </div>
                     <DollarSign className="w-8 h-8 text-green-600" />
@@ -749,7 +795,7 @@ export default function ShopManagement() {
                     <div>
                       <p className="text-sm text-gray-600">{language === 'ur' ? 'کل اخراجات' : 'Total Expenses'}</p>
                       <p className="text-2xl font-bold text-red-600">
-                        ₨{shops.reduce((sum, shop) => sum + shop.maintenance + shop.utilities, 0).toLocaleString()}
+                        Rs{shops.reduce((sum, shop) => sum + shop.maintenance + shop.utilities, 0).toLocaleString()}
                       </p>
                     </div>
                     <FileText className="w-8 h-8 text-red-600" />
@@ -762,7 +808,7 @@ export default function ShopManagement() {
                     <div>
                       <p className="text-sm text-gray-600">{language === 'ur' ? 'خالص آمدنی' : 'Net Income'}</p>
                       <p className="text-2xl font-bold text-blue-600">
-                        ₨{(shops.reduce((sum, shop) => sum + shop.monthlyRent, 0) - shops.reduce((sum, shop) => sum + shop.maintenance + shop.utilities, 0)).toLocaleString()}
+                        Rs{(shops.reduce((sum, shop) => sum + shop.monthlyRent, 0) - shops.reduce((sum, shop) => sum + shop.maintenance + shop.utilities, 0)).toLocaleString()}
                       </p>
                     </div>
                     <DollarSign className="w-8 h-8 text-blue-600" />
@@ -798,7 +844,7 @@ export default function ShopManagement() {
                   <TableRow key={shop._id}>
                     <TableCell>{shop.name}</TableCell>
                     <TableCell>{shop.tenant}</TableCell>
-                    <TableCell>₨{shop.monthlyRent.toLocaleString()}</TableCell>
+                    <TableCell>Rs{shop.monthlyRent.toLocaleString()}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button size="sm" onClick={() => {
@@ -894,8 +940,8 @@ export default function ShopManagement() {
                       ) : (
                         <>
                           <div className="mb-2 flex justify-end space-x-4">
-                            <span className="font-semibold">Total Paid: <span className="text-green-600">₨{totalPaid.toLocaleString()}</span></span>
-                            <span className="font-semibold">Total Unpaid: <span className="text-red-600">₨{totalUnpaid.toLocaleString()}</span></span>
+                            <span className="font-semibold">Total Paid: <span className="text-green-600">Rs{totalPaid.toLocaleString()}</span></span>
+                            <span className="font-semibold">Total Unpaid: <span className="text-red-600">Rs{totalUnpaid.toLocaleString()}</span></span>
                           </div>
                           <hr className="mb-2" />
                           <Table>
@@ -912,7 +958,7 @@ export default function ShopManagement() {
                                 <TableRow key={p._id}>
                                   <TableCell>{p.month}</TableCell>
                                   <TableCell>{p.year}</TableCell>
-                                  <TableCell>₨{p.amount.toLocaleString()}</TableCell>
+                                  <TableCell>Rs{p.amount.toLocaleString()}</TableCell>
                                   <TableCell>{p.paid ? <span className="text-green-600 font-semibold">Paid</span> : <span className="text-red-600 font-semibold">Unpaid</span>}</TableCell>
                                 </TableRow>
                               ))}
@@ -935,16 +981,16 @@ export default function ShopManagement() {
                         return (
                           <TableRow key={m}>
                             <TableCell>{m}</TableCell>
-                            <TableCell>₨{paid.toLocaleString()}</TableCell>
-                            <TableCell>₨{unpaid.toLocaleString()}</TableCell>
+                            <TableCell>Rs{paid.toLocaleString()}</TableCell>
+                            <TableCell>Rs{unpaid.toLocaleString()}</TableCell>
                           </TableRow>
                         );
                       });
                       return (
                         <>
                           <div className="mb-2 flex justify-end space-x-4">
-                            <span className="font-semibold">Yearly Paid: <span className="text-green-600">₨{yearlyPaid.toLocaleString()}</span></span>
-                            <span className="font-semibold">Yearly Unpaid: <span className="text-red-600">₨{yearlyUnpaid.toLocaleString()}</span></span>
+                            <span className="font-semibold">Yearly Paid: <span className="text-green-600">Rs{yearlyPaid.toLocaleString()}</span></span>
+                            <span className="font-semibold">Yearly Unpaid: <span className="text-red-600">Rs{yearlyUnpaid.toLocaleString()}</span></span>
                           </div>
                           <hr className="mb-2" />
                           <Table>
@@ -987,7 +1033,7 @@ export default function ShopManagement() {
                 <div className="font-semibold">{language === 'ur' ? 'کرایہ دار:' : 'Tenant:'} <span className="font-normal">{selectedShopForDetail.tenant || '-'}</span></div>
                 <div className="font-semibold">{language === 'ur' ? 'مقام:' : 'Location:'} <span className="font-normal">{selectedShopForDetail.location}</span></div>
                 <div className="font-semibold">{language === 'ur' ? 'سائز:' : 'Size:'} <span className="font-normal">{selectedShopForDetail.size}</span></div>
-                <div className="font-semibold">{language === 'ur' ? 'ماہانہ کرایہ:' : 'Monthly Rent:'} <span className="font-normal">₨{selectedShopForDetail.monthlyRent.toLocaleString()}</span></div>
+                <div className="font-semibold">{language === 'ur' ? 'ماہانہ کرایہ:' : 'Monthly Rent:'} <span className="font-normal">Rs{selectedShopForDetail.monthlyRent.toLocaleString()}</span></div>
                 <div className="font-semibold">{language === 'ur' ? 'حیثیت:' : 'Status:'} <span className="font-normal">{getStatusText(selectedShopForDetail.status)}</span></div>
               </div>
               <div>
@@ -1007,7 +1053,7 @@ export default function ShopManagement() {
                       <TableRow key={payment._id}>
                         <TableCell>{payment.month}</TableCell>
                         <TableCell>{payment.year}</TableCell>
-                        <TableCell>₨{payment.amount.toLocaleString()}</TableCell>
+                        <TableCell>Rs{payment.amount.toLocaleString()}</TableCell>
                         <TableCell>
                           {payment.paid ? (
                             <span className="text-green-600 font-semibold">{language === 'ur' ? 'ادا شدہ' : 'Paid'}</span>
