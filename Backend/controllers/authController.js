@@ -108,6 +108,46 @@ export const loginController = async (req, res) => {
         });
     }
 };
+
+export const getUserProfileController = async (req, res) => {
+
+    try {
+
+        console.log(req.user);
+        const userId = req.user._id;
+
+        // Find user by ID and exclude password
+        const user = await auth.findById(userId).select('-password');
+        
+        if (!user) {
+            return res.status(404).send({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        res.status(200).send({
+            success: true,
+            message: "User profile fetched successfully",
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                address: user.address,
+                role: user.role,
+                answer: user.answer // Include if needed for security questions
+            },
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({
+            success: false,
+            message: "Error fetching user profile",
+            error,
+        });
+    }
+};
 export const forgotPasswordController = async (req, res) => {
     try {
         const { email, answer, newPassword } = req.body
@@ -129,7 +169,7 @@ export const forgotPasswordController = async (req, res) => {
             });
         }
         ///////checkkkkkkkkkkkkkkkkkkk
-        const user = await users.findOne({ email, answer })
+        const user = await auth.findOne({ email, answer })
         ///////////////validation
         if (!user) {
             return res.status(404).send({
@@ -139,7 +179,7 @@ export const forgotPasswordController = async (req, res) => {
         }
 
         const hashed = await hashPassword(newPassword);
-        await users.findByIdAndUpdate(user._id, { password: hashed });
+        await auth.findByIdAndUpdate(user._id, { password: hashed });
         res.status(200).send({
             success: true,
             message: "password reset sucessfull",
@@ -172,7 +212,8 @@ export const updateProfileController = async (req, res) => {
         const userId = req.user._id;
 
         // Fetch the current user
-        const user = await users.findById(userId);
+        const user = await auth.findById(userId); // Change from users to auth
+        // const user = await users.findById(userId);
 
         // Check if the user exists
         if (!user) {
@@ -188,7 +229,7 @@ export const updateProfileController = async (req, res) => {
         const hashedPassword = password ? await hashPassword(password) : undefined;
 
         // Update the user fields
-        const updatedUser = await users.findByIdAndUpdate(
+        const updatedUser = await auth.findByIdAndUpdate( // Change from users to auth
             userId,
             {
                 name: name || user.name,
@@ -197,7 +238,7 @@ export const updateProfileController = async (req, res) => {
                 phone: phone || user.phone,
                 address: address || user.address,
             },
-            { new: true } // Return the updated document
+            { new: true }
         );
 
         res.status(200).send({
