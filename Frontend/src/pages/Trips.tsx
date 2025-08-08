@@ -25,13 +25,13 @@ interface VehicleData {
 
 interface TripData {
   _id: string;
+  tripNumber: string;
   driver: DriverData;
   vehicle: VehicleData;
   departureLocation: string;
   destinationLocation: string;
   createdAt?: string;
   vouchers?: VoucherData[];
-  // Add more fields as needed
 }
 
 interface VoucherData {
@@ -86,6 +86,7 @@ export default function Trips() {
 
   // Trip form state
   const [tripForm, setTripForm] = useState<Partial<TripData>>({
+    tripNumber: "",
     driver: null,
     vehicle: null,
     departureLocation: "",
@@ -216,6 +217,7 @@ export default function Trips() {
       await createTrip(newTrip);
       setSuccessMsg('Trip added!');
       setTripForm({ driver: null, vehicle: null, departureLocation: '', destinationLocation: '' });
+      setSelectedVouchers([]);
       setIsTripFormOpen(false);
       fetchAll();
     } catch {
@@ -245,6 +247,7 @@ export default function Trips() {
   );
 
   const filteredTrips = (trips || []).filter(trip =>
+    trip.tripNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     trip.driver?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     trip.vehicle?.number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     trip.departureLocation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -341,7 +344,7 @@ export default function Trips() {
 
           <Dialog open={isTripFormOpen} onOpenChange={setIsTripFormOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-primary  text-white">
+              <Button className="bg-gradient-primary text-white">
                 <Plus className="w-4 h-4 mr-2" />
                 {language === 'ur' ? 'نیا ٹرپ' : 'New Trip'}
               </Button>
@@ -466,7 +469,7 @@ export default function Trips() {
                   <Button type="button" variant="outline" onClick={() => setIsTripFormOpen(false)}>
                     {language === 'ur' ? 'منسوخ کریں' : 'Cancel'}
                   </Button>
-                  <Button type="submit" className="bg-gradient-primary  text-white">
+                  <Button type="submit" className="bg-gradient-primary text-white">
                     {language === 'ur' ? 'ٹرپ شامل کریں' : 'Add Trip'}
                   </Button>
                 </div>
@@ -500,7 +503,7 @@ export default function Trips() {
                     <Input id="driverAddress" value={driverForm.address} onChange={e => setDriverForm({ ...driverForm, address: e.target.value })} required />
                   </div>
                 </div>
-                <Button type="submit" className="w-full bg-gradient-primary  text-white">
+                <Button type="submit" className="w-full bg-gradient-primary text-white">
                   {language === 'ur' ? 'محفوظ کریں' : 'Save'}
                 </Button>
               </form>
@@ -590,8 +593,6 @@ export default function Trips() {
                 ))}
               </TableBody>
             </Table>
-                {/* Trip history for selected vehicle */}
-                {/* You can add a selectedVehicle state and show trip history like drivers if needed */}
               </>
             )}
           </CardContent>
@@ -613,52 +614,54 @@ export default function Trips() {
               <div className="text-red-500">{tripError}</div>
             ) : (
             <Table>
-                              <TableHeader>
-                  <TableRow>
-                    <TableHead>{language === 'ur' ? 'ڈرائیور' : 'Driver'}</TableHead>
-                    <TableHead>{language === 'ur' ? 'گاڑی' : 'Vehicle'}</TableHead>
-                    <TableHead>{language === 'ur' ? 'روانگی' : 'Departure'}</TableHead>
-                    <TableHead>{language === 'ur' ? 'منزل' : 'Destination'}</TableHead>
-                    <TableHead>{language === 'ur' ? 'واؤچرز' : 'Vouchers'}</TableHead>
-                    <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
-                    <TableHead>{language === 'ur' ? 'عمل' : 'Actions'}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(trips || []).map(trip => (
-                    <TableRow key={trip._id}>
-                      <TableCell>{trip.driver?.name}</TableCell>
-                      <TableCell>{trip.vehicle?.number}</TableCell>
-                      <TableCell>{trip.departureLocation}</TableCell>
-                      <TableCell>{trip.destinationLocation}</TableCell>
-                      <TableCell>
-                        {trip.vouchers && trip.vouchers.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {trip.vouchers.map((voucher, index) => (
-                              <Badge key={voucher._id} variant="secondary" className="text-xs">
-                                {voucher.voucherNumber}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-sm">No vouchers</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{trip.createdAt ? new Date(trip.createdAt).toLocaleDateString() : ''}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleViewTrip(trip)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="destructive" size="sm" onClick={() => handleDeleteTrip(trip._id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{language === 'ur' ? 'ٹرپ نمبر' : 'Trip No.'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'ڈرائیور' : 'Driver'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'گاڑی' : 'Vehicle'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'روانگی' : 'Departure'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'منزل' : 'Destination'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'واؤچرز' : 'Vouchers'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
+                  <TableHead>{language === 'ur' ? 'عمل' : 'Actions'}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(trips || []).map(trip => (
+                  <TableRow key={trip._id}>
+                    <TableCell className="font-medium">{trip.tripNumber}</TableCell>
+                    <TableCell>{trip.driver?.name}</TableCell>
+                    <TableCell>{trip.vehicle?.number}</TableCell>
+                    <TableCell>{trip.departureLocation}</TableCell>
+                    <TableCell>{trip.destinationLocation}</TableCell>
+                    <TableCell>
+                      {trip.vouchers && trip.vouchers.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {trip.vouchers.map((voucher, index) => (
+                            <Badge key={voucher._id} variant="secondary" className="text-xs">
+                              {voucher.voucherNumber}
+                            </Badge>
+                          ))}
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No vouchers</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{trip.createdAt ? new Date(trip.createdAt).toLocaleDateString() : ''}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleViewTrip(trip)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDeleteTrip(trip._id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
             )}
           </CardContent>
         </Card>
@@ -746,6 +749,7 @@ export default function Trips() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead>{language === 'ur' ? 'ٹرپ نمبر' : 'Trip No.'}</TableHead>
                           <TableHead>{language === 'ur' ? 'گاڑی نمبر' : 'Vehicle No.'}</TableHead>
                           <TableHead>{language === 'ur' ? 'منزل' : 'Destination'}</TableHead>
                           <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
@@ -754,6 +758,7 @@ export default function Trips() {
                       <TableBody>
                         {(selectedDriver.trips || []).map(trip => (
                           <TableRow key={trip._id}>
+                            <TableCell>{trip.tripNumber}</TableCell>
                             <TableCell>{trip.vehicle?.number}</TableCell>
                             <TableCell>{trip.destinationLocation}</TableCell>
                             <TableCell>{trip.createdAt ? new Date(trip.createdAt).toLocaleDateString() : ''}</TableCell>
@@ -781,6 +786,7 @@ export default function Trips() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>{language === 'ur' ? 'ٹرپ نمبر' : 'Trip No.'}</TableHead>
                   <TableHead>{language === 'ur' ? 'ڈرائیور' : 'Driver'}</TableHead>
                   <TableHead>{language === 'ur' ? 'منزل' : 'Destination'}</TableHead>
                   <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
@@ -789,38 +795,8 @@ export default function Trips() {
               <TableBody>
                 {(trips.filter(trip => trip.vehicle?._id === selectedVehicleForHistory._id)).map(trip => (
                   <TableRow key={trip._id}>
+                    <TableCell className="font-medium">{trip.tripNumber}</TableCell>
                     <TableCell>{trip.driver?.name}</TableCell>
-                    <TableCell>{trip.destinationLocation}</TableCell>
-                    <TableCell>{trip.createdAt ? new Date(trip.createdAt).toLocaleDateString() : ''}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Driver History Dialog */}
-      <Dialog open={isDriverHistoryOpen} onOpenChange={setIsDriverHistoryOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedDriverForHistory?.name} {language === 'ur' ? 'کی ٹرپ ہسٹری' : 'Trip History'}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedDriverForHistory && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{language === 'ur' ? 'گاڑی نمبر' : 'Vehicle No.'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'منزل' : 'Destination'}</TableHead>
-                  <TableHead>{language === 'ur' ? 'تاریخ' : 'Date'}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(trips.filter(trip => trip.driver?._id === selectedDriverForHistory._id)).map(trip => (
-                  <TableRow key={trip._id}>
-                    <TableCell>{trip.vehicle?.number}</TableCell>
                     <TableCell>{trip.destinationLocation}</TableCell>
                     <TableCell>{trip.createdAt ? new Date(trip.createdAt).toLocaleDateString() : ''}</TableCell>
                   </TableRow>
