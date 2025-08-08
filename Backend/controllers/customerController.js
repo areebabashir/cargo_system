@@ -270,14 +270,8 @@ export const addBiltyToCustomer = async (req, res) => {
       });
     }
 
-    // Check if bilty already exists for this customer
-    const existingBilty = customer.bilties.find(b => b.biltyNumber === biltyNumber);
-    if (existingBilty) {
-      return res.status(400).json({
-        success: false,
-        message: 'Bilty already exists for this customer'
-      });
-    }
+    // We're allowing multiple bilties with the same number for a customer
+    // This check is removed to allow customers to have multiple bilties with the same number
 
     // Add bilty to customer
     customer.bilties.push({
@@ -386,8 +380,18 @@ export const removeBiltyFromCustomer = async (req, res) => {
       });
     }
 
-    // Remove bilty from customer
-    customer.bilties = customer.bilties.filter(b => b.biltyNumber !== biltyNumber);
+    // Remove the first occurrence of the bilty with the given number
+    const biltyIndex = customer.bilties.findIndex(b => b.biltyNumber === biltyNumber);
+    
+    if (biltyIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bilty not found for this customer'
+      });
+    }
+    
+    // Remove the bilty at the found index
+    customer.bilties.splice(biltyIndex, 1);
     await customer.save();
 
     res.status(200).json({
@@ -473,20 +477,22 @@ export const searchCustomerByBilty = async (req, res) => {
   try {
     const { biltyNumber } = req.params;
 
-    const customer = await Customer.findOne({ 
+    // This query will find any customer that has at least one bilty with the given number
+    const customers = await Customer.find({ 
       'bilties.biltyNumber': biltyNumber 
     }).populate('createdBy', 'name email');
 
-    if (!customer) {
+    if (!customers || customers.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Customer with this bilty number not found'
+        message: 'No customers found with this bilty number'
       });
     }
 
+    // Return all matching customers
     res.status(200).json({
       success: true,
-      data: customer
+      data: customers.length === 1 ? customers[0] : customers
     });
 
   } catch (error) {

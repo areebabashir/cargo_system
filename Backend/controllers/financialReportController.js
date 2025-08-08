@@ -333,16 +333,28 @@ const drawTable = (doc, headers, rows, startX, startY, columnWidths) => {
   });
 };
 
-// Helper function for centered section headings
+// Helper function for centered section headings with improved styling
 function drawSectionHeading(doc, heading) {
   const pageWidth = doc.page.width;
   const margin = 40;
   const textWidth = pageWidth - margin * 2;
 
+  // Add a subtle background for section headings
+  doc.save();
+  doc.fillColor('#f0f7ff');
+  doc.roundedRect(margin, doc.y, textWidth, 24, 3).fill();
+  doc.restore();
+  
+  // Add heading text with improved styling
   doc.font('Helvetica-Bold')
+      .fillColor('#0056b3')
       .fontSize(14)
-      .text(heading, { align: 'center', width: textWidth });
-  doc.moveDown(0.5);
+      .text(heading, margin, doc.y + 5, { 
+        align: 'center', 
+        width: textWidth 
+      });
+  
+  doc.moveDown(1);
 }
 
 // Daily PDF
@@ -361,10 +373,38 @@ export const generateDailyPDF = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     doc.pipe(res);
 
-    // Title with proper spacing
-    doc.font('Helvetica-Bold').fontSize(18).text('Daily Financial Report', { align: 'center' });
-    doc.font('Helvetica').fontSize(12).text(`Date: ${report.reportDate.toDateString()}`, { align: 'center' });
-    doc.moveDown(1);
+    // Enhanced header with logo and proper styling
+    const pageWidth = doc.page.width;
+    const margin = 40;
+    const contentWidth = pageWidth - (margin * 2);
+    
+    // Draw header background
+    doc.save();
+    doc.fillColor('#007BFF');
+    doc.roundedRect(margin, 40, contentWidth, 80, 5).fill();
+    doc.restore();
+    
+    // Add company name/logo placeholder
+    doc.save();
+    doc.font('Helvetica-Bold')
+       .fillColor('#FFFFFF')
+       .fontSize(22)
+       .text('CARGO LINGO', margin, 55, { align: 'center', width: contentWidth });
+    doc.restore();
+    
+    // Add report title
+    doc.font('Helvetica-Bold')
+       .fillColor('#FFFFFF')
+       .fontSize(18)
+       .text('Daily Financial Report', margin, 85, { align: 'center', width: contentWidth });
+    
+    // Add date below header box
+    doc.font('Helvetica')
+       .fillColor('#000000')
+       .fontSize(12)
+       .text(`Date: ${report.reportDate.toDateString()}`, margin, 130, { align: 'center', width: contentWidth });
+    
+    doc.moveDown(2);
 
     // Trip Expenses
     drawSectionHeading(doc, 'Trip Expenses');
@@ -461,9 +501,38 @@ export const generateMonthlyPDF = async (req, res) => {
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'];
 
-    doc.font('Helvetica-Bold').fontSize(18)
-      .text(`Monthly Financial Report - ${monthNames[month - 1]} ${year}`, { align: 'center' });
-    doc.moveDown(1);
+    // Enhanced header with logo and proper styling
+    const pageWidth = doc.page.width;
+    const margin = 40;
+    const contentWidth = pageWidth - (margin * 2);
+    
+    // Draw header background
+    doc.save();
+    doc.fillColor('#007BFF');
+    doc.roundedRect(margin, 40, contentWidth, 80, 5).fill();
+    doc.restore();
+    
+    // Add company name/logo placeholder
+    doc.save();
+    doc.font('Helvetica-Bold')
+       .fillColor('#FFFFFF')
+       .fontSize(22)
+       .text('CARGO LINGO', margin, 55, { align: 'center', width: contentWidth });
+    doc.restore();
+    
+    // Add report title with month and year
+    doc.font('Helvetica-Bold')
+       .fillColor('#FFFFFF')
+       .fontSize(18)
+       .text(`Monthly Financial Report`, margin, 85, { align: 'center', width: contentWidth });
+    
+    // Add month/year below header box
+    doc.font('Helvetica')
+       .fillColor('#000000')
+       .fontSize(12)
+       .text(`${monthNames[month - 1]} ${year}`, margin, 130, { align: 'center', width: contentWidth });
+    
+    doc.moveDown(2);
 
     // Daily Breakdown
     drawSectionHeading(doc, 'Daily Breakdown');
@@ -513,9 +582,38 @@ export const generateYearlyPDF = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     doc.pipe(res);
 
-    doc.font('Helvetica-Bold').fontSize(18)
-      .text(`Yearly Financial Report - ${year}`, { align: 'center' });
-    doc.moveDown(1);
+    // Enhanced header with logo and proper styling
+    const pageWidth = doc.page.width;
+    const margin = 40;
+    const contentWidth = pageWidth - (margin * 2);
+    
+    // Draw header background
+    doc.save();
+    doc.fillColor('#007BFF');
+    doc.roundedRect(margin, 40, contentWidth, 80, 5).fill();
+    doc.restore();
+    
+    // Add company name/logo placeholder
+    doc.save();
+    doc.font('Helvetica-Bold')
+       .fillColor('#FFFFFF')
+       .fontSize(22)
+       .text('CARGO LINGO', margin, 55, { align: 'center', width: contentWidth });
+    doc.restore();
+    
+    // Add report title
+    doc.font('Helvetica-Bold')
+       .fillColor('#FFFFFF')
+       .fontSize(18)
+       .text(`Yearly Financial Report`, margin, 85, { align: 'center', width: contentWidth });
+    
+    // Add year below header box
+    doc.font('Helvetica')
+       .fillColor('#000000')
+       .fontSize(12)
+       .text(`Year: ${year}`, margin, 130, { align: 'center', width: contentWidth });
+    
+    doc.moveDown(2);
 
     // Monthly Breakdown
     drawSectionHeading(doc, 'Monthly Breakdown');

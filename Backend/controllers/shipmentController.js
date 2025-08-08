@@ -1,29 +1,49 @@
 import Shipment from '../models/shipmentModel.js';
 import Customer from '../models/customerModel.js';
 
+// Helper function to generate bilty number
+const generateBiltyNumber = async () => {
+  // Get current date in YYYYMMDD format
+  const today = new Date();
+  const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+  
+  // Find the highest serial number for today
+  const latestShipment = await Shipment.findOne({
+    biltyNumber: { $regex: `BLT-${dateStr}-` }
+  }).sort({ biltyNumber: -1 });
+  
+  let serialNumber = 1;
+  if (latestShipment) {
+    // Extract the serial number from the latest bilty number
+    const parts = latestShipment.biltyNumber.split('-');
+    if (parts.length === 3) {
+      const lastSerialNumber = parseInt(parts[2]);
+      if (!isNaN(lastSerialNumber)) {
+        serialNumber = lastSerialNumber + 1;
+      }
+    }
+  }
+  
+  // Format: BLT-YYYYMMDD-SerialNumber
+  return `BLT-${dateStr}-${serialNumber}`;
+};
+
 // Create new shipment
 export const createShipment = async (req, res) => {
   try {
-    //
     const shipmentData = req.body;
     console.log(shipmentData);
     
-    // Validate required fields
-    if (!shipmentData.biltyNumber || !shipmentData.senderName || !shipmentData.receiverName) {
+    // Validate required fields (except biltyNumber which will be auto-generated)
+    if (!shipmentData.senderName || !shipmentData.receiverName) {
       return res.status(400).json({
         success: false,
         message: 'Missing required fields'
       });
     }
 
-    // Check if bilty number already exists
-    const existingShipment = await Shipment.findOne({ biltyNumber: shipmentData.biltyNumber });
-    if (existingShipment) {
-      return res.status(400).json({
-        success: false,
-        message: 'Bilty number already exists'
-      });
-    }
+    // Auto-generate bilty number
+    shipmentData.biltyNumber = await generateBiltyNumber();
 
     // Add createdBy field
     shipmentData.createdBy = req.user._id;
@@ -328,24 +348,11 @@ export const getShipmentStats = async (req, res) => {
   }
 };
 
-// Generate bilty number
-export const generateBiltyNumber = async (req, res) => {
+// Generate bilty number API endpoint (renamed to avoid conflict with helper function)
+export const getBiltyNumber = async (req, res) => {
   try {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    
-    // Get count of shipments for today
-    const todayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const todayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
-    
-    const todayCount = await Shipment.countDocuments({
-      createdAt: { $gte: todayStart, $lt: todayEnd }
-    });
-    
-    const sequence = String(todayCount + 1).padStart(3, '0');
-    const biltyNumber = `BLT-${year}-${month}${day}-${sequence}`;
+    // Use the helper function to generate the bilty number
+    const biltyNumber = await generateBiltyNumber();
 
     res.status(200).json({
       success: true,
@@ -464,4 +471,4 @@ export const getAvailableBiltiesForVouchers = async (req, res) => {
       error: error.message
     });
   }
-}; 
+};

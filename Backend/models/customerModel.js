@@ -78,14 +78,8 @@ customerSchema.virtual('paymentPercentage').get(function() {
 
 // Pre-save middleware to ensure data consistency
 customerSchema.pre('save', function(next) {
-  // Ensure bilty numbers are unique within the customer
-  const biltyNumbers = this.bilties.map(b => b.biltyNumber);
-  const uniqueBiltyNumbers = [...new Set(biltyNumbers)];
-  
-  if (biltyNumbers.length !== uniqueBiltyNumbers.length) {
-    return next(new Error('Duplicate bilty numbers are not allowed'));
-  }
-  
+  // We're allowing duplicate bilty numbers within a customer
+  // The uniqueness check is removed to allow customers to have multiple bilties with the same number
   next();
 });
 
