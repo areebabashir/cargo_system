@@ -18,6 +18,7 @@ import shopRoutes from './routes/shopRoutes.js';
 import rentPaymentRoutes from './routes/rentPaymentRoutes.js';
 import staffRoutes from './routes/staffRoute.js'; 
 import claimRoutes from './routes/claimRoutes.js';
+import financialReportRoutes from './routes/financialReportRoutes.js';
 
 // Load environment variables FIRST
 dotenv.config();
@@ -62,6 +63,7 @@ apiRouter.use('/shops', shopRoutes);
 apiRouter.use('/rent-payments', rentPaymentRoutes);
 apiRouter.use('/staff', staffRoutes);
 apiRouter.use('/claims', claimRoutes);
+apiRouter.use('/financial-reports', financialReportRoutes);
 
 app.use('/api', apiRouter);
 

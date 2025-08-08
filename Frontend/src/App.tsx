@@ -19,6 +19,7 @@ import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Customers from "./pages/Customers";
+import FinancialReport from "./pages/financialReport";
 
 const queryClient = new QueryClient();
 
@@ -103,6 +104,13 @@ const App = () => (
               <ProtectedRoute>
                 <DashboardLayout>
                   <Settings />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/financial-reports" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <FinancialReport />
                 </DashboardLayout>
               </ProtectedRoute>
             } />
