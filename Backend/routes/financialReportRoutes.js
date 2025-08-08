@@ -5,10 +5,14 @@ import {
   getFinancialReportById,
   updateFinancialReport,
   deleteFinancialReport,
-  getReportsByTripId,
-  getReportsByDriverId,
-  getReportsByVehicleId,
-  getTripExpenseSummary
+  checkTodayReport,
+  getTodaysTrips,
+  getAllStaff,
+  getMonthlyReport,
+  getYearlyReport,
+  generateDailyPDF,
+  generateMonthlyPDF,
+  generateYearlyPDF
 } from '../controllers/financialReportController.js';
 
 const router = express.Router();
@@ -20,10 +24,18 @@ router.get('/:id', getFinancialReportById);
 router.put('/:id', updateFinancialReport);
 router.delete('/:id', deleteFinancialReport);
 
-// Specialized routes
-router.get('/trip/:tripId', getReportsByTripId);
-router.get('/driver/:driverId', getReportsByDriverId);
-router.get('/vehicle/:vehicleId', getReportsByVehicleId);
-router.get('/summary/trip/:tripId', getTripExpenseSummary);
+// Helper routes
+router.get('/check/today', checkTodayReport);
+router.get('/trips/today', getTodaysTrips);
+router.get('/staff/all', getAllStaff);
+
+// Report summary routes
+router.get('/monthly/:year/:month', getMonthlyReport);
+router.get('/yearly/:year', getYearlyReport);
+
+// PDF generation routes
+router.get('/pdf/daily/:id', generateDailyPDF);
+router.get('/pdf/monthly/:year/:month', generateMonthlyPDF);
+router.get('/pdf/yearly/:year', generateYearlyPDF);
 
 export default router;
