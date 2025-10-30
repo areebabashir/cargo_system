@@ -17,7 +17,7 @@ function CustomerDetailModal({ customer, onClose, onUpdatePaymentStatus }) {
     try {
       const token = localStorage.getItem('token');
       await axios.put(
-        `http://localhost:8000/api/customers/${customer._id}/bilties/${biltyNumber}/payment-status`,
+        `${import.meta.env.VITE_API_URL}/customers/${customer._id}/bilties/${biltyNumber}/payment-status`,
         { payment_status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );

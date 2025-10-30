@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api/drivers';
+import { API_BASE_URL } from './config';
+const API_URL = `${API_BASE_URL}/drivers`;
 
 export const getAllDrivers = async () => {
   const response = await axios.get(API_URL);
