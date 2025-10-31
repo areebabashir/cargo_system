@@ -2,10 +2,20 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:8000/api/rent-payments';
 
+// Helper function to get auth token
+const getAuthToken = () => {
+  return localStorage.getItem('token');
+};
+
 // Get all rent payments
 export const getAllRentPayments = async () => {
   try {
-    const response = await axios.get(API_URL);
+    const token = getAuthToken();
+    const response = await axios.get(API_URL, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data.data;
   } catch (error) {
     console.error('Error fetching rent payments:', error);
@@ -16,7 +26,12 @@ export const getAllRentPayments = async () => {
 // Get rent payments by shop ID
 export const getRentPaymentsByShop = async (shopId) => {
   try {
-    const response = await axios.get(`${API_URL}/shop/${shopId}`);
+    const token = getAuthToken();
+    const response = await axios.get(`${API_URL}/shop/${shopId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data.data;
   } catch (error) {
     console.error('Error fetching rent payments by shop:', error);
@@ -27,7 +42,12 @@ export const getRentPaymentsByShop = async (shopId) => {
 // Create a new rent payment
 export const createRentPayment = async (rentPaymentData) => {
   try {
-    const response = await axios.post(API_URL, rentPaymentData);
+    const token = getAuthToken();
+    const response = await axios.post(API_URL, rentPaymentData, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data.data;
   } catch (error) {
     console.error('Error creating rent payment:', error);
@@ -38,7 +58,12 @@ export const createRentPayment = async (rentPaymentData) => {
 // Get rent payment by ID
 export const getRentPaymentById = async (id) => {
   try {
-    const response = await axios.get(`${API_URL}/${id}`);
+    const token = getAuthToken();
+    const response = await axios.get(`${API_URL}/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data.data;
   } catch (error) {
     console.error('Error fetching rent payment:', error);
@@ -49,7 +74,12 @@ export const getRentPaymentById = async (id) => {
 // Update rent payment
 export const updateRentPayment = async (id, rentPaymentData) => {
   try {
-    const response = await axios.put(`${API_URL}/${id}`, rentPaymentData);
+    const token = getAuthToken();
+    const response = await axios.put(`${API_URL}/${id}`, rentPaymentData, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data.data;
   } catch (error) {
     console.error('Error updating rent payment:', error);
@@ -60,10 +90,15 @@ export const updateRentPayment = async (id, rentPaymentData) => {
 // Delete rent payment
 export const deleteRentPayment = async (id) => {
   try {
-    const response = await axios.delete(`${API_URL}/${id}`);
+    const token = getAuthToken();
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data;
   } catch (error) {
     console.error('Error deleting rent payment:', error);
     throw error;
   }
-}; 
+};

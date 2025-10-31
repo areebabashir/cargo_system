@@ -8,8 +8,11 @@ import {
   Plus,
   FileText,
   Truck,
-  UserPlus
+  UserPlus,
+  PieChart,
+  BarChart
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -18,6 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { dashboardService } from "@/services/dashboardService";
+import { ChartContainer } from "@/components/ui/chart";
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 
 const Dashboard = () => {
   const { t, language } = useLanguage();
@@ -26,6 +31,12 @@ const Dashboard = () => {
   const [recentShipments, setRecentShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [paymentStats, setPaymentStats] = useState(null);
+  const [monthlyRevenue, setMonthlyRevenue] = useState([]);
+  const [topCustomers, setTopCustomers] = useState([]);
+
+  // Colors for charts
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
   useEffect(() => {
     fetchDashboardData();
@@ -34,13 +45,19 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [statsResponse, shipmentsResponse] = await Promise.all([
+      const [statsResponse, shipmentsResponse, paymentStatsResponse, monthlyRevenueResponse, topCustomersResponse] = await Promise.all([
         dashboardService.getDashboardStats(),
-        dashboardService.getRecentShipments()
+        dashboardService.getRecentShipments(),
+        dashboardService.getPaymentStats(),
+        dashboardService.getMonthlyRevenue(),
+        dashboardService.getTopCustomers()
       ]);
 
       const stats = statsResponse.data;
       const shipments = shipmentsResponse.data;
+      const paymentStatsData = paymentStatsResponse.data;
+      const monthlyRevenueData = monthlyRevenueResponse.data;
+      const topCustomersData = topCustomersResponse.data;
 
       // Transform stats data for the StatsCard component
       const transformedStats = [
@@ -78,14 +95,34 @@ const Dashboard = () => {
         }
       ];
 
+      // Transform payment stats for pie chart
+      const transformedPaymentStats = [
+        { name: 'Paid', value: paymentStatsData?.paid?.count || 0 },
+        { name: 'Unpaid', value: paymentStatsData?.unpaid?.count || 0 }
+      ];
+
+      // Transform monthly revenue for bar chart
+      const transformedMonthlyRevenue = monthlyRevenueData.map(item => ({
+        date: item._id,
+        revenue: item.dailyRevenue
+      }));
+
       setStatsData(transformedStats);
       setRecentShipments(shipments);
+      setPaymentStats(transformedPaymentStats);
+      setMonthlyRevenue(transformedMonthlyRevenue);
+      setTopCustomers(topCustomersData || []);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Format currency
+  const formatCurrency = (value) => {
+    return `₨ ${value?.toLocaleString() || '0'}`;
   };
 
   const quickActions = [
@@ -177,11 +214,15 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">
-          {t("dashboard")}
-        </h1>
-        <p className="text-muted-foreground">
+      <div className="mb-10 bg-gradient-to-r from-white to-gray-50 p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 animate-fade-in">
+        <div className="flex items-center mb-3">
+          <div className="w-1.5 h-8 bg-primary rounded-full mr-3 animate-pulse"></div>
+          <h1 className="text-3xl font-bold text-foreground relative">
+            {t("dashboard")}
+            <div className="absolute -bottom-1 left-0 w-1/3 h-1 bg-primary/20 rounded-full"></div>
+          </h1>
+        </div>
+        <p className="text-muted-foreground pl-5 border-l-2 border-primary/20 ml-1">
           {t("welcomeMessage")}
         </p>
       </div>
@@ -202,11 +243,15 @@ const Dashboard = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="mt-8">
-        <h2 className="text-2xl font-semibold text-foreground mb-6">
-          {t("quickActions")}
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="mt-10">
+        <div className="flex items-center mb-6">
+          <div className="w-1 h-6 bg-primary rounded-full mr-3"></div>
+          <h2 className="text-2xl font-semibold text-foreground relative group">
+            {t("quickActions")}
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-scale-in">
           {quickActions.map((action, index) => (
             <QuickActionCard
               key={index}
@@ -265,21 +310,41 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Monthly Overview Chart Placeholder */}
+        {/* Monthly Revenue Chart */}
         <Card className="bg-card-light border-border">
           <CardHeader>
             <CardTitle className="text-card-light-foreground flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-primary" />
+              <BarChart className="w-5 h-5 mr-2 text-primary" />
               {t("monthlyRevenue")}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-48 bg-gradient-card rounded-lg flex items-center justify-center border border-border">
-              <div className="text-center text-muted-foreground">
-                <TrendingUp className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>Chart Component</p>
-                <p className="text-sm">Revenue analytics will be displayed here</p>
-              </div>
+            <div className="h-64 w-full rounded-lg border border-border bg-white p-4">
+              {monthlyRevenue.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsBarChart
+                    data={monthlyRevenue}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis tickFormatter={(value) => `₨${value / 1000}k`} />
+                    <Tooltip 
+                      formatter={(value) => [`₨${value.toLocaleString()}`, 'Revenue']}
+                      labelFormatter={(label) => `Date: ${label}`}
+                    />
+                    <Legend />
+                    <Bar dataKey="revenue" name="Revenue" fill="#8884d8" />
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <div className="text-center text-muted-foreground">
+                    <BarChart className="mx-auto mb-2 h-12 w-12 opacity-50" />
+                    <p>{language === 'ur' ? 'کوئی ڈیٹا دستیاب نہیں' : 'No data available'}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -287,51 +352,97 @@ const Dashboard = () => {
 
       {/* Revenue Section Split */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        {/* Shop Revenue Section */}
+        {/* Payment Statistics Pie Chart */}
         <Card className="bg-card-light border-border">
           <CardHeader>
             <CardTitle className="text-card-light-foreground flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-primary" />
-              {language === 'ur' ? 'دکان کی آمدنی' : 'Shop Revenue'}
+              <PieChart className="w-5 h-5 mr-2 text-primary" />
+              {language === 'ur' ? 'ادائیگی کے اعدادوشمار' : 'Payment Statistics'}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Bar Chart Placeholder for Paid/Unpaid by Month */}
-            <div className="h-64 flex flex-col items-center justify-center border border-border rounded-lg bg-white">
-              {/* Replace this with a real chart library like recharts or chart.js */}
-              <div className="w-full h-full flex flex-col items-center justify-center">
-                <div className="text-lg font-semibold mb-2">Paid vs Unpaid (Monthly)</div>
-                <div className="flex items-end gap-4 h-40 w-full justify-center">
-                  {/* Example static bars for 6 months */}
-                  {[{month: 'Jan', paid: 8, unpaid: 2}, {month: 'Feb', paid: 7, unpaid: 3}, {month: 'Mar', paid: 9, unpaid: 1}, {month: 'Apr', paid: 6, unpaid: 4}, {month: 'May', paid: 10, unpaid: 0}, {month: 'Jun', paid: 5, unpaid: 5}].map((data, idx) => (
-                    <div key={data.month} className="flex flex-col items-center">
-                      <div className="flex flex-col-reverse h-32 w-8">
-                        <div style={{height: `${data.paid * 10}px`}} className="bg-green-400 w-full rounded-t"></div>
-                        <div style={{height: `${data.unpaid * 10}px`}} className="bg-red-400 w-full rounded-b"></div>
-                      </div>
-                      <div className="text-xs mt-1">{data.month}</div>
-                    </div>
-                  ))}
+            <div className="h-64 w-full rounded-lg border border-border bg-white p-4">
+              {paymentStats && paymentStats.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={paymentStats}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={true}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {paymentStats.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [value, 'Count']} />
+                    <Legend />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <div className="text-center text-muted-foreground">
+                    <PieChart className="mx-auto mb-2 h-12 w-12 opacity-50" />
+                    <p>{language === 'ur' ? 'کوئی ڈیٹا دستیاب نہیں' : 'No data available'}</p>
+                  </div>
                 </div>
-                <div className="flex gap-4 mt-4">
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 bg-green-400 inline-block rounded"></span>Paid</span>
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-400 inline-block rounded"></span>Unpaid</span>
-                </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
-        {/* Shipment/Bilty/Trip Revenue Section (Empty for now) */}
+        {/* Top Customers Chart */}
         <Card className="bg-card-light border-border">
           <CardHeader>
             <CardTitle className="text-card-light-foreground flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-primary" />
-              {language === 'ur' ? 'شپمنٹ/بلٹی/ٹرپ کی آمدنی' : 'Shipment/Bilty/Trip Revenue'}
+              <Users className="w-5 h-5 mr-2 text-primary" />
+              {language === 'ur' ? 'اہم گاہک' : 'Top Customers'}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              {language === 'ur' ? 'یہ سیکشن جلد دستیاب ہوگا' : 'This section will be available soon.'}
+            <div className="h-64 w-full rounded-lg border border-border bg-white p-4">
+              <div className="flex flex-col h-full">
+                <div className="text-sm font-medium mb-2">
+                  {language === 'ur' ? 'بقایا رقم کے لحاظ سے اہم گاہک' : 'Top Customers by Outstanding Amount'}
+                </div>
+                <div className="flex-1 overflow-auto">
+                  <div className="grid grid-cols-3 gap-2 text-xs font-medium text-muted-foreground mb-2">
+                    <div>{language === 'ur' ? 'نام' : 'Name'}</div>
+                    <div>{language === 'ur' ? 'بلٹیاں' : 'Bilties'}</div>
+                    <div className="text-right">{language === 'ur' ? 'بقایا رقم' : 'Amount Due'}</div>
+                  </div>
+                  {topCustomers.length > 0 ? (
+                    <div className="space-y-2">
+                      {topCustomers.map((customer, index) => (
+                        <div key={index} className="grid grid-cols-3 gap-2 p-2 rounded-md bg-gray-50">
+                          <div className="font-medium truncate">{customer.name}</div>
+                          <div>{customer.biltyCount || 0}</div>
+                          <div className="text-right font-medium">
+                            {formatCurrency(customer.totalAmountDue)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex h-32 items-center justify-center text-muted-foreground">
+                      {language === 'ur' ? 'کوئی ڈیٹا دستیاب نہیں' : 'No customer data available'}
+                    </div>
+                  )}
+                </div>
+                <div className="mt-2 pt-2 border-t text-xs text-center text-muted-foreground">
+                  <Button 
+                    variant="link" 
+                    className="text-xs p-0 h-auto" 
+                    onClick={() => navigate('/customers')}
+                  >
+                    {language === 'ur' ? 'تمام گاہکوں کو دیکھیں' : 'View All Customers'}
+                  </Button>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

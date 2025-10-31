@@ -2,10 +2,20 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:8000/api/shops';
 
+// Helper function to get auth token
+const getAuthToken = () => {
+  return localStorage.getItem('token');
+};
+
 // Get all shops
 export const getAllShops = async () => {
   try {
-    const response = await axios.get(API_URL);
+    const token = getAuthToken();
+    const response = await axios.get(API_URL, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data.data;
   } catch (error) {
     console.error('Error fetching shops:', error);
@@ -16,7 +26,12 @@ export const getAllShops = async () => {
 // Create a new shop
 export const createShop = async (shopData) => {
   try {
-    const response = await axios.post(API_URL, shopData);
+    const token = getAuthToken();
+    const response = await axios.post(API_URL, shopData, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data.data;
   } catch (error) {
     console.error('Error creating shop:', error);
@@ -27,7 +42,12 @@ export const createShop = async (shopData) => {
 // Get shop by ID
 export const getShopById = async (id) => {
   try {
-    const response = await axios.get(`${API_URL}/${id}`);
+    const token = getAuthToken();
+    const response = await axios.get(`${API_URL}/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data.data;
   } catch (error) {
     console.error('Error fetching shop:', error);
@@ -38,7 +58,12 @@ export const getShopById = async (id) => {
 // Update shop
 export const updateShop = async (id, shopData) => {
   try {
-    const response = await axios.put(`${API_URL}/${id}`, shopData);
+    const token = getAuthToken();
+    const response = await axios.put(`${API_URL}/${id}`, shopData, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data.data;
   } catch (error) {
     console.error('Error updating shop:', error);
@@ -49,7 +74,12 @@ export const updateShop = async (id, shopData) => {
 // Delete shop
 export const deleteShop = async (id) => {
   try {
-    const response = await axios.delete(`${API_URL}/${id}`);
+    const token = getAuthToken();
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data;
   } catch (error) {
     console.error('Error deleting shop:', error);
@@ -60,10 +90,15 @@ export const deleteShop = async (id) => {
 // Get shop with rent payments
 export const getShopWithRentPayments = async (id) => {
   try {
-    const response = await axios.get(`${API_URL}/${id}/rent-payments`);
+    const token = getAuthToken();
+    const response = await axios.get(`${API_URL}/${id}/rent-payments`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data.data;
   } catch (error) {
     console.error('Error fetching shop with rent payments:', error);
     throw error;
   }
-}; 
+};
