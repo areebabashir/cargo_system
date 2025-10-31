@@ -1241,7 +1241,7 @@ export default function Shipments() {
                           const newStatus = 'paid'; // Always mark as paid when button is clicked
                           
                           // Update shipment payment status
-                          await fetch(`http://localhost:8000/api/shipments/update/${selectedBilty.id}`, {
+                          await fetch(`${import.meta.env.VITE_API_URL}/shipments/update/${selectedBilty.id}`, {
                             method: 'PUT',
                             headers: {
                               'Content-Type': 'application/json',
@@ -1253,14 +1253,14 @@ export default function Shipments() {
                           });
 
                           // Update customer bilty payment status
-                          const customerResponse = await fetch(`http://localhost:8000/api/customers/search/bilty/${selectedBilty.biltyNumber}`, {
+                          const customerResponse = await fetch(`${import.meta.env.VITE_API_URL}/customers/search/bilty/${selectedBilty.biltyNumber}`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                           });
                           
                           if (customerResponse.ok) {
                             const customerData = await customerResponse.json();
                             if (customerData.success && customerData.data) {
-                              await fetch(`http://localhost:8000/api/customers/${customerData.data._id}/bilties/${selectedBilty.biltyNumber}/payment-status`, {
+                              await fetch(`${import.meta.env.VITE_API_URL}/customers/${customerData.data._id}/bilties/${selectedBilty.biltyNumber}/payment-status`, {
                                 method: 'PUT',
                                 headers: {
                                   'Content-Type': 'application/json',

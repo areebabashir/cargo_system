@@ -61,7 +61,7 @@ const [isProfileLoading, setIsProfileLoading] = useState(true);
             return;
         }
 
-        const response = await fetch('http://localhost:8000/api/auth/profile', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/profile`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -108,7 +108,7 @@ const handleUpdateProfile = async () => {
             return;
         }
 
-        const response = await fetch('http://localhost:8000/api/auth/profile', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/profile`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -173,7 +173,7 @@ const handleUpdateProfile = async () => {
     setIsLoading(true);
     try {
       // This would use the updateProfileController with password
-      const response = await fetch('http://localhost:8000/api/auth/profile', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -217,7 +217,7 @@ const handleUpdateProfile = async () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/auth/ForgetPassword', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/ForgetPassword`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

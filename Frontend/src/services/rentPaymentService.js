@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api/rent-payments';
+import { API_BASE_URL } from './config';
+const API_URL = `${API_BASE_URL}/rent-payments`;
 
 // Helper function to get auth token
 const getAuthToken = () => {

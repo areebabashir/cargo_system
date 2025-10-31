@@ -121,7 +121,7 @@ export default function Vouchers() {
   const loadAvailableBilties = async () => {
     try {
       // Use the new endpoint that filters by voucher_made and payment status
-      const response = await fetch(`http://localhost:8000/api/shipments/available-for-vouchers?showOnlyUnpaid=${showOnlyUnpaid}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/shipments/available-for-vouchers?showOnlyUnpaid=${showOnlyUnpaid}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -161,7 +161,7 @@ export default function Vouchers() {
       console.log('🔧 Fixing bilty amounts...');
       const token = localStorage.getItem('token');
       
-      const response = await fetch('http://localhost:8000/api/shipments/recalculate-totals', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/shipments/recalculate-totals`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

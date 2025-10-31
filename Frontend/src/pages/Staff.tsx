@@ -45,7 +45,7 @@ export default function StaffManagement() {
   });
 
   // API configuration
-  const API_URL = "http://localhost:8000/api/staff";
+  const API_URL = `${import.meta.env.VITE_API_URL}/staff`;
   const axiosInstance = axios.create({
     baseURL: API_URL,
     headers: {
@@ -241,7 +241,7 @@ export default function StaffManagement() {
                     <TableCell className="font-medium flex items-center">
                       {staff.image && (
                         <img 
-                          src={`http://localhost:8000${staff.image}`} 
+                          src={`${import.meta.env.VITE_API_URL}${staff.image}`} 
                           alt={staff.name}
                           className="w-10 h-10 rounded-full mr-3 object-cover"
                         />
