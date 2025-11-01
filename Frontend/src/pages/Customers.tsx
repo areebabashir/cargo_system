@@ -133,7 +133,7 @@ export default function Customers() {
         search,
         status,
       };
-      const res = await axios.get('http://localhost:8000/api/customers/get/all', {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/customers/get/all`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });

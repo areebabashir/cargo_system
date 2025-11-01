@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Download, Eye, Edit, Trash2, Phone, MapPin, Package, Truck, DollarSign, Calendar, User, Building } from "lucide-react";
+import { Plus, Search, Filter, Download, Eye, Edit, Trash2, Phone, MapPin, Package, Truck, DollarSign, Calendar, User, Building, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { shipmentService } from "@/services/shipmentService";
 import { generatePDFReceipt } from "@/components/ui/pdf-receipt";
 import { useToast } from "@/hooks/use-toast";
+import * as customerService from "@/services/customerService";
 
 interface BiltyItem {
   id: string;
@@ -50,6 +51,19 @@ interface BiltyData {
   totalCharges?: number; // Added for detailed breakdown
 }
 
+// Define Customer interface
+interface Customer {
+  _id: string;
+  name: string;
+  phone: string;
+  address: string;
+  bilties: Array<{
+    biltyNumber: string;
+    amount_to_be_paid: number;
+    payment_status: 'paid' | 'unpaid';
+  }>;
+}
+
 export default function Shipments() {
   const { t, language } = useLanguage();
   const { toast } = useToast();
@@ -62,10 +76,15 @@ export default function Shipments() {
   const [filterPayment, setFilterPayment] = useState("all");
   const [loading, setLoading] = useState(false);
   const [downloadingReceipt, setDownloadingReceipt] = useState<string | null>(null);
+  
+  // Customer state
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+  const [isNewCustomer, setIsNewCustomer] = useState(true);
 
   // Form state
   const [formData, setFormData] = useState<Partial<BiltyData>>({
-    biltyNumber: "",
+    // biltyNumber removed as it's auto-generated
     senderName: "",
     addaName: "",
     cityName: "",
@@ -95,9 +114,27 @@ export default function Shipments() {
     unitFare: 0
   });
 
-  // Load shipments from API
+  // Function to load customers
+  const loadCustomers = async () => {
+    try {
+      const response = await customerService.getCustomers();
+      if (response.success) {
+        setCustomers(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading customers:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load customers",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Load shipments and customers from API
   useEffect(() => {
     loadShipments();
+    loadCustomers();
   }, [searchTerm, filterStatus, filterPayment]);
 
   // Recalculate totals when items or form data changes
@@ -140,14 +177,8 @@ export default function Shipments() {
     }
   };
 
-  const generateBiltyNumber = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `BLT-${year}-${month}${day}-${random}`;
-  };
+  // Bilty number is now auto-generated on the server side with format BLT-YYYYMMDD-SerialNumber
+  // where SerialNumber starts from 1 each day
 
   // Item management functions
   const addItem = () => {
@@ -229,7 +260,7 @@ export default function Shipments() {
 
   const resetForm = () => {
     setFormData({
-      biltyNumber: "",
+      // biltyNumber removed as it's auto-generated
       senderName: "",
       addaName: "",
       cityName: "",
@@ -252,6 +283,9 @@ export default function Shipments() {
     });
     setItems([]);
     setNewItem({ description: "", quantity: 1, unitFare: 0 });
+    // Reset customer selection
+    setSelectedCustomer("");
+    setIsNewCustomer(true);
     console.log('Form reset completed');
   };
 
@@ -264,7 +298,7 @@ export default function Shipments() {
       const remainingFare = totalCharges - (formData.receivedFare || 0);
       
       const shipmentData = {
-        biltyNumber: formData.biltyNumber || generateBiltyNumber(),
+        // biltyNumber is now auto-generated on the server side
         items: items, // Use the items state directly
         totalFare: totalFare,
         totalCharges: totalCharges,
@@ -293,7 +327,30 @@ export default function Shipments() {
       console.log('Total charges:', totalCharges);
       console.log('Remaining fare:', remainingFare);
 
-      await shipmentService.createShipment(shipmentData);
+      const response = await shipmentService.createShipment(shipmentData);
+      
+      // If an existing customer was selected, add the bilty to that customer
+      if (!isNewCustomer && selectedCustomer) {
+        try {
+          // Add bilty to customer
+          await customerService.addBiltyToCustomer(selectedCustomer, {
+            biltyNumber: response.data.biltyNumber,
+            amount_to_be_paid: remainingFare
+          });
+          
+          toast({
+            title: "Success",
+            description: "Bilty added to customer successfully",
+          });
+        } catch (customerError: any) {
+          console.error("Error adding bilty to customer:", customerError);
+          toast({
+            title: "Warning",
+            description: "Shipment created but failed to add bilty to customer",
+            variant: "destructive",
+          });
+        }
+      }
       
       // Reset form
       resetForm();
@@ -303,8 +360,45 @@ export default function Shipments() {
       loadShipments();
     } catch (error) {
       console.error('Error creating shipment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create shipment",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle customer selection
+  const handleCustomerSelect = (customerId: string) => {
+    if (customerId === "new") {
+      // User wants to add a new customer
+      setIsNewCustomer(true);
+      setSelectedCustomer("");
+      // Clear receiver fields
+      setFormData(prev => ({
+        ...prev,
+        receiverName: "",
+        receiverPhone: "",
+        receiverAddress: ""
+      }));
+    } else if (customerId) {
+      // User selected an existing customer
+      setIsNewCustomer(false);
+      setSelectedCustomer(customerId);
+      
+      // Find the selected customer
+      const customer = customers.find(c => c._id === customerId);
+      if (customer) {
+        // Auto-fill receiver information
+        setFormData(prev => ({
+          ...prev,
+          receiverName: customer.name,
+          receiverPhone: customer.phone || "",
+          receiverAddress: customer.address || ""
+        }));
+      }
     }
   };
 
@@ -444,10 +538,14 @@ export default function Shipments() {
                   </Label>
                   <Input
                     id="biltyNumber"
-                    value={formData.biltyNumber}
-                    onChange={(e) => setFormData({...formData, biltyNumber: e.target.value})}
-                    placeholder={language === 'ur' ? 'بلٹی نمبر درج کریں' : 'Enter bilty number'}
+                    value={language === 'ur' ? 'خود کار طریقے سے تیار کیا جائے گا' : 'Will be auto-generated'}
+                    disabled
+                    className="bg-gray-100"
+                    placeholder={language === 'ur' ? 'خود کار طریقے سے تیار کیا جائے گا' : 'Will be auto-generated'}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {language === 'ur' ? 'فارمیٹ: BLT-تاریخ-سیریل نمبر' : 'Format: BLT-Date-SerialNumber'}
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="dateTime">
@@ -520,6 +618,42 @@ export default function Shipments() {
                 <h3 className="text-lg font-semibold mb-4">
                   {language === 'ur' ? 'وصول کنندہ کی معلومات' : 'Receiver Information'}
                 </h3>
+                
+                {/* Customer Selection */}
+                <div className="mb-4">
+                  <Label htmlFor="customerSelect">
+                    {language === 'ur' ? 'کسٹمر منتخب کریں' : 'Select Customer'}
+                  </Label>
+                  <div className="flex gap-2">
+                    <Select 
+                      value={isNewCustomer ? "new" : selectedCustomer} 
+                      onValueChange={handleCustomerSelect}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={language === 'ur' ? 'کسٹمر منتخب کریں' : 'Select a customer'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new">
+                          <div className="flex items-center">
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            {language === 'ur' ? 'نیا کسٹمر شامل کریں' : 'Add New Customer'}
+                          </div>
+                        </SelectItem>
+                        {customers.map(customer => (
+                          <SelectItem key={customer._id} value={customer._id}>
+                            {customer.name} - {customer.phone}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isNewCustomer 
+                      ? (language === 'ur' ? 'نیا کسٹمر شامل کریں' : 'Adding a new customer') 
+                      : (language === 'ur' ? 'موجودہ کسٹمر منتخب کیا گیا' : 'Selected existing customer')}
+                  </p>
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="receiverName">
@@ -530,6 +664,7 @@ export default function Shipments() {
                       value={formData.receiverName}
                       onChange={(e) => setFormData({...formData, receiverName: e.target.value})}
                       placeholder={language === 'ur' ? 'وصول کنندہ کا نام درج کریں' : 'Enter receiver name'}
+                      disabled={!isNewCustomer}
                     />
                   </div>
                   <div>
@@ -541,6 +676,7 @@ export default function Shipments() {
                       value={formData.receiverPhone}
                       onChange={(e) => setFormData({...formData, receiverPhone: e.target.value})}
                       placeholder={language === 'ur' ? 'فون نمبر درج کریں' : 'Enter phone number'}
+                      disabled={!isNewCustomer}
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -553,6 +689,7 @@ export default function Shipments() {
                       onChange={(e) => setFormData({...formData, receiverAddress: e.target.value})}
                       placeholder={language === 'ur' ? 'مکمل پتہ درج کریں' : 'Enter complete address'}
                       rows={3}
+                      disabled={!isNewCustomer}
                     />
                   </div>
                 </div>
